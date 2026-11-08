@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Every tool now rejects unknown parameters with an error that names the unknown key and lists the valid ones. Before, a typo such as `query` for `search` was silently dropped, so `search_recipes` returned every recipe.
+
 ## [0.1.0] - 2026-11-08
 
 First stable release. It is the same code as 0.1.0-alpha.2, now published as `latest`. Requires Mealie v3.29.0 or later.
