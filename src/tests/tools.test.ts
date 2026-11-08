@@ -1,3 +1,6 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { MealieClient } from '../client.js';
 import { decodeBase64, mergePut, shapePage } from '../tools/_helpers.js';
@@ -55,6 +58,42 @@ describe('registration', () => {
     const { toolConfigs } = setup(mockClient(), { readOnly: true });
     expect(toolConfigs.has('search_recipes')).toBe(true);
     for (const [name, config] of toolConfigs) expect(config.annotations?.readOnlyHint, name).toBe(true);
+  });
+});
+
+describe('strict inputs', () => {
+  it('rejects an unknown parameter, naming it and listing the valid ones', () => {
+    const { schemas } = setup();
+    const result = schemas.get('search_recipes')?.safeParse({ query: 'soup' });
+    expect(result?.success).toBe(false);
+    const message = result?.error?.issues[0].message ?? '';
+    expect(message).toContain('"query"');
+    expect(message).toContain('search, categories, tags');
+  });
+  it('accepts every parameter a tool declares', () => {
+    const { schemas } = setup();
+    expect(schemas.get('search_recipes')?.safeParse({ search: 'soup', tags: ['a'], page: 1 }).success).toBe(true);
+  });
+  it('rejects unknown parameters on every tool, including ones that take none', () => {
+    const { schemas } = setup();
+    expect(schemas.size).toBeGreaterThan(50);
+    for (const [name, schema] of schemas) {
+      expect(schema.safeParse({ definitely_not_a_parameter: 1 }).success, name).toBe(false);
+    }
+  });
+  it('reaches the client as a clear error over a real MCP connection', async () => {
+    const server = new McpServer({ name: 'test', version: '0' });
+    registerAllTools(server, mockClient());
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'test', version: '0' });
+    await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
+    const outcome = await client
+      .callTool({ name: 'search_recipes', arguments: { query: 'soup' } })
+      .then((r) => JSON.stringify(r))
+      .catch((e: Error) => e.message);
+    expect(outcome).toContain('Unknown parameter');
+    expect(outcome).toContain('query');
+    await client.close();
   });
 });
 
