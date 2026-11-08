@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `merge_foods` and `merge_units` merge a duplicate into another entry and move its ingredients across, so recipes keep their links. `delete_food` and `delete_unit` point to them.
+- `create_unit` and `update_unit` take `plural_abbreviation`, `use_abbreviation` and `fraction`, so a unit can show "1 kg" and a decimal quantity instead of "1 4/5 kilograms". Foods and units take `aliases`.
+
 ## [0.1.0] - 2026-11-08
 
 First stable release. It is the same code as 0.1.0-alpha.2, now published as `latest`. Requires Mealie v3.29.0 or later.

@@ -147,6 +147,25 @@ describe.skipIf(SKIP)('Integration: live Mealie', () => {
     await admin('delete_recipe_tool', { id: tool.id });
   });
 
+  it('merges duplicate foods and units, and sets unit display fields', async () => {
+    const id = unique();
+    const keep = await admin('create_food', { name: `Bacon ${id}`, aliases: [`Smoked bacon ${id}`] });
+    const dupe = await admin('create_food', { name: `Smoked ${id}` });
+    await admin('merge_foods', { from_id: dupe.id, to_id: keep.id });
+    const unit = await admin('create_unit', {
+      name: `Gram ${id}`,
+      abbreviation: 'g',
+      use_abbreviation: true,
+      fraction: false,
+    });
+    expect(unit.fraction).toBe(false);
+    expect(unit.useAbbreviation).toBe(true);
+    const other = await admin('create_unit', { name: `Gramme ${id}` });
+    await admin('merge_units', { from_id: other.id, to_id: unit.id });
+    await admin('delete_food', { id: keep.id });
+    await admin('delete_unit', { id: unit.id });
+  });
+
   it('runs the cookbook lifecycle', async () => {
     const id = unique();
     const tag = await admin('create_tag', { name: `Freezer ${id}` });

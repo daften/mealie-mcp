@@ -55,7 +55,7 @@ See the [login form guide](docs/guide/login-form.md) before enabling it.
 
 ## Tools
 
-58 tools in seven groups: `recipes`, `recipe-assets`, `ingredients`, `organizers`, `cookbooks`, `shopping`, `mealplans`. Limit them with `--preset minimal|default|full`, `--groups recipes,shopping` or `--read-only`. The [tool reference](docs/reference/tools.md) lists them all.
+60 tools in seven groups: `recipes`, `recipe-assets`, `ingredients`, `organizers`, `cookbooks`, `shopping`, `mealplans`. Limit them with `--preset minimal|default|full`, `--groups recipes,shopping` or `--read-only`. The [tool reference](docs/reference/tools.md) lists them all.
 
 ## Documentation
 
