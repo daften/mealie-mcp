@@ -226,8 +226,18 @@ jobs:
       # A prerelease already published to `next` above. A stable release publishes to `latest`, so
       # `next` has to be pointed at it separately, or `@next` would trail `@latest`. Moving a
       # dist-tag needs the "Allow npm dist-tag" permission on the package's trusted-publisher
-      # config (or a token). When that is missing the release is still good, so this step must not
-      # fail the run: it prints the exact command to run by hand instead.
+      # config AND npm >= 11.21.0 (https://docs.npmjs.com/trusted-publishers). v0.1.0 ran this with
+      # Node 24's bundled npm and got E401 with the permission already on, so the newer npm is
+      # installed for this step only; `npm publish` above keeps the bundled one. When the step
+      # still fails the release is good, so it must not fail the run: it prints the exact command
+      # to run by hand instead.
+      - name: Use an npm that can move dist-tags with trusted publishing
+        if: needs.setup.outputs.channel == 'release' && needs.setup.outputs.npm_tag == 'latest' && needs.setup.outputs.update_next == 'true'
+        continue-on-error: true
+        run: |
+          npm install -g npm@11.21.0
+          npm --version
+
       - name: Point the next dist-tag at this stable release
         if: needs.setup.outputs.channel == 'release' && needs.setup.outputs.npm_tag == 'latest' && needs.setup.outputs.update_next == 'true'
         continue-on-error: true
