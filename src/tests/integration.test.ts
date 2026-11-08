@@ -147,6 +147,20 @@ describe.skipIf(SKIP)('Integration: live Mealie', () => {
     await admin('delete_recipe_tool', { id: tool.id });
   });
 
+  it('runs the cookbook lifecycle', async () => {
+    const id = unique();
+    const tag = await admin('create_tag', { name: `Freezer ${id}` });
+    const book = await admin('create_cookbook', { name: `Freezer menu ${id}`, tags: [tag.id] });
+    expect(book.queryFilterString).toContain(tag.id);
+    await admin('update_cookbook', { id: book.id, description: 'Meals for the freezer' });
+    const fetched = await admin('get_cookbook', { id: book.id });
+    expect(fetched.description).toBe('Meals for the freezer');
+    expect(fetched.queryFilterString).toContain(tag.id); // a partial update keeps the filter
+    expect((await admin('list_cookbooks')).total).toBeGreaterThan(0);
+    await admin('delete_cookbook', { id: book.id });
+    await admin('delete_tag', { id: tag.id });
+  });
+
   it('runs shopping and meal plans, and keeps them per household', async () => {
     const id = unique();
     const recipe = await admin('create_recipe', { name: `Plan ${id}`, ingredients: [{ note: 'one leek' }] });

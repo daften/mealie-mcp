@@ -25,4 +25,4 @@ Want to test unreleased changes from `develop`? Install a [nightly build](./nigh
 
 The server exposes Mealie's REST API as MCP tools, and your AI assistant calls them when you ask about recipes, shopping or meal plans.
 
-With 53 tools across 6 groups, you can optionally load only a subset to save context window space. See [Tool filtering](/reference/filtering).
+With 58 tools across 7 groups, you can optionally load only a subset to save context window space. See [Tool filtering](/reference/filtering).

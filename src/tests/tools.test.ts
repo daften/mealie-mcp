@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MealieClient } from '../client.js';
 import { decodeBase64, mergePut, shapePage } from '../tools/_helpers.js';
+import { buildQueryFilter } from '../tools/cookbooks.js';
 import { PRESETS, registerAllTools, TOOL_GROUPS } from '../tools/index.js';
 import { summarizeRecipe, toRecipePatch } from '../tools/recipes.js';
 import { createMockServer } from './_helpers.js';
@@ -103,6 +104,56 @@ describe('recipes', () => {
     for (const bad of ['../users', 'a/b', '..', 'a?b', '%2e%2e'])
       expect(shape?.safeParse(bad).success, bad).toBe(false);
     expect(shape?.safeParse('tomato-soup').success).toBe(true);
+  });
+});
+
+describe('cookbooks', () => {
+  const TAG = '33333333-3333-4333-8333-333333333333';
+  const COOKBOOK = '44444444-4444-4444-8444-444444444444';
+  it('builds the filter from tag IDs when creating', async () => {
+    const client = mockClient();
+    await run(setup(client), 'create_cookbook', { name: 'Freezer menu', tags: [TAG] });
+    expect(client.post).toHaveBeenCalledWith('/households/cookbooks', {
+      name: 'Freezer menu',
+      description: '',
+      public: false,
+      position: 1,
+      queryFilterString: `tags.id IN ["${TAG}"]`,
+    });
+  });
+  it('joins filters with AND and honours match=all', () => {
+    expect(buildQueryFilter({ tags: [TAG], foods: [RECIPE], match: 'all' })).toBe(
+      `tags.id CONTAINS ALL ["${TAG}"] AND recipe_ingredient.food.id CONTAINS ALL ["${RECIPE}"]`,
+    );
+  });
+  it('refuses a raw filter combined with structured ones', async () => {
+    const client = mockClient();
+    const result = await run(setup(client), 'create_cookbook', {
+      name: 'x',
+      tags: [TAG],
+      query_filter_string: 'tags.id IN []',
+    });
+    expect(result.isError).toBe(true);
+    expect(client.post).not.toHaveBeenCalled();
+  });
+  it('keeps the existing filter when an update names no filter', async () => {
+    const client = mockClient({
+      get: vi.fn(async () => ({ id: COOKBOOK, name: 'Old', queryFilterString: 'a IN ["b"]' })),
+    });
+    await run(setup(client), 'update_cookbook', { id: COOKBOOK, name: 'New' });
+    expect(client.put).toHaveBeenCalledWith(`/households/cookbooks/${COOKBOOK}`, {
+      id: COOKBOOK,
+      name: 'New',
+      queryFilterString: 'a IN ["b"]',
+    });
+  });
+  it('replaces the filter when asked, and an empty string clears it', async () => {
+    const client = mockClient({ get: vi.fn(async () => ({ id: COOKBOOK, queryFilterString: 'a IN ["b"]' })) });
+    await run(setup(client), 'update_cookbook', { id: COOKBOOK, query_filter_string: '' });
+    expect(client.put).toHaveBeenCalledWith(`/households/cookbooks/${COOKBOOK}`, {
+      id: COOKBOOK,
+      queryFilterString: '',
+    });
   });
 });
 

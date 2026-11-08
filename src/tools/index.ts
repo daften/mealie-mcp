@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MealieClient } from '../client.js';
+import { registerCookbookTools } from './cookbooks.js';
 import { registerIngredientTools } from './ingredients.js';
 import { registerMealplanTools } from './mealplans.js';
 import { registerOrganizerTools } from './organizers.js';
@@ -7,7 +8,15 @@ import { registerRecipeAssetTools } from './recipe-assets.js';
 import { registerRecipeTools } from './recipes.js';
 import { registerShoppingTools } from './shopping.js';
 
-export const TOOL_GROUPS = ['recipes', 'recipe-assets', 'ingredients', 'organizers', 'shopping', 'mealplans'] as const;
+export const TOOL_GROUPS = [
+  'recipes',
+  'recipe-assets',
+  'ingredients',
+  'organizers',
+  'cookbooks',
+  'shopping',
+  'mealplans',
+] as const;
 
 export type ToolGroup = (typeof TOOL_GROUPS)[number];
 
@@ -50,6 +59,7 @@ const REGISTRARS: Record<ToolGroup, (server: McpServer, client: MealieClient) =>
   'recipe-assets': registerRecipeAssetTools,
   ingredients: registerIngredientTools,
   organizers: registerOrganizerTools,
+  cookbooks: registerCookbookTools,
   shopping: registerShoppingTools,
   mealplans: registerMealplanTools,
 };
