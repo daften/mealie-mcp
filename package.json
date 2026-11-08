@@ -1,6 +1,6 @@
 {
   "name": "@daften/mealie-mcp",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0",
   "description": "MCP server for Mealie recipe manager",
   "type": "module",
   "bin": {
