@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `create_recipe` and `update_recipe` return a short summary (id, slug, name, servings, total time, tags, ingredient count, rating, whether it has an image) instead of the whole recipe. `get_recipe` still returns everything.
 - Sharper tool descriptions: ingredient `food` and `unit` need an id and name from `list_foods` / `list_units`, quantities are decimals, unparsed text goes in `note`, `total_time` is never derived from prep and cook time, ratings are per user, and `search_recipes` filters take IDs or slugs and mean "any" unless `require_all` is set. `import_recipe_from_url` says what happens when a site blocks the scraper, and `parse_ingredients` says it creates nothing.
+
 ### Added
 
 - `merge_foods` and `merge_units` merge a duplicate into another entry and move its ingredients across, so recipes keep their links. `delete_food` and `delete_unit` point to them.
