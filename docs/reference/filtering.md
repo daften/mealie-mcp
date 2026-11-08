@@ -1,6 +1,6 @@
 # Tool filtering
 
-With 58 tools across 7 groups, loading everything consumes significant context window space. Three flags let you control exactly which tools are registered.
+With 60 tools across 7 groups, loading everything consumes significant context window space. Three flags let you control exactly which tools are registered.
 
 ## --preset \<name\>
 
@@ -10,7 +10,7 @@ Load a named subset of tool groups:
 |--------|----------------|-------|
 | `minimal` | recipes | 10 |
 | `default` | recipes, shopping, mealplans | 25 |
-| `full` | all 7 groups | 58 |
+| `full` | all 7 groups | 60 |
 
 ```bash
 node dist/index.js --preset default
@@ -37,7 +37,7 @@ Unrecognized flags are an error rather than being ignored, so a typo such as `--
 node dist/index.js --preset default --read-only
 ```
 
-Without any filter flags the server registers all 58 tools (equivalent to `--preset full`).
+Without any filter flags the server registers all 60 tools (equivalent to `--preset full`).
 
 ## Environment variable equivalents
 

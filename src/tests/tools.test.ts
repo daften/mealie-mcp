@@ -196,6 +196,60 @@ describe('cookbooks', () => {
   });
 });
 
+describe('foods and units', () => {
+  const FROM = '55555555-5555-4555-8555-555555555555';
+  const TO = '66666666-6666-4666-8666-666666666666';
+  it('creates a gram unit with fractions off and the short form on', async () => {
+    const client = mockClient();
+    await run(setup(client), 'create_unit', {
+      name: 'gram',
+      abbreviation: 'g',
+      plural_abbreviation: 'g',
+      use_abbreviation: true,
+      fraction: false,
+      aliases: ['gr'],
+    });
+    expect(client.post).toHaveBeenCalledWith('/units', {
+      name: 'gram',
+      abbreviation: 'g',
+      pluralAbbreviation: 'g',
+      useAbbreviation: true,
+      fraction: false,
+      aliases: [{ name: 'gr' }],
+    });
+  });
+  it('switches fractions off on an existing unit and keeps its other fields', async () => {
+    const client = mockClient({ get: vi.fn(async () => ({ id: FROM, name: 'kilogram', fraction: true })) });
+    await run(setup(client), 'update_unit', { id: FROM, fraction: false });
+    expect(client.put).toHaveBeenCalledWith(`/units/${FROM}`, { id: FROM, name: 'kilogram', fraction: false });
+  });
+  it('gives foods aliases but not the unit-only fields', () => {
+    const { toolConfigs } = setup();
+    expect(Object.keys(toolConfigs.get('update_food')?.inputSchema ?? {})).toContain('aliases');
+    expect(Object.keys(toolConfigs.get('update_food')?.inputSchema ?? {})).not.toContain('fraction');
+    expect(Object.keys(toolConfigs.get('update_unit')?.inputSchema ?? {})).toContain('fraction');
+  });
+  it('merges foods and units with the body Mealie expects', async () => {
+    const client = mockClient();
+    const m = setup(client);
+    await run(m, 'merge_foods', { from_id: FROM, to_id: TO });
+    expect(client.put).toHaveBeenCalledWith('/foods/merge', { fromFood: FROM, toFood: TO });
+    await run(m, 'merge_units', { from_id: FROM, to_id: TO });
+    expect(client.put).toHaveBeenCalledWith('/units/merge', { fromUnit: FROM, toUnit: TO });
+  });
+  it('refuses to merge something into itself', async () => {
+    const client = mockClient();
+    const result = await run(setup(client), 'merge_foods', { from_id: FROM, to_id: FROM });
+    expect(result.isError).toBe(true);
+    expect(client.put).not.toHaveBeenCalled();
+  });
+  it('marks merges as destructive so read-only mode drops them', () => {
+    const { toolConfigs } = setup(mockClient(), { readOnly: true });
+    expect(toolConfigs.has('merge_foods')).toBe(false);
+    expect(toolConfigs.has('merge_units')).toBe(false);
+  });
+});
+
 describe('shopping', () => {
   it('adds items in bulk against the list', async () => {
     const client = mockClient();
