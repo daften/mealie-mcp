@@ -18,7 +18,7 @@
  * `via` array that is an object is a real advisory; a string only names another vulnerable package
  * this one depends on, so those are never updated for their own sake.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // Same gate as the nightly audit (`--audit-level=moderate`): it decides which packages are fixed.
@@ -228,6 +228,9 @@ function main(argv) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// `import.meta.url` is the real path, argv[1] is the path as typed. They differ when a directory on the way is
+// a symlink (macOS keeps /var -> /private/var, so a copy in the temp dir never ran and printed nothing), so
+// compare real paths: a silent no-op here reads as "nothing to fix".
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main(process.argv.slice(2));
 }
