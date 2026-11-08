@@ -18,6 +18,22 @@ type ToolConfig<Shape extends ToolShape> = {
   };
 };
 
+/**
+ * Zod objects drop unknown keys by default, so a typo like `query` for `search` turned into a call with no
+ * filter and no error. Rejecting them makes the mistake visible, and naming the valid keys lets the model
+ * correct itself in one retry.
+ */
+export function strictInput(shape: ToolShape): z.ZodObject<ToolShape, z.core.$strict> {
+  return z.strictObject(shape, {
+    error: (issue) => {
+      if (issue.code !== 'unrecognized_keys') return undefined;
+      const unknown = issue.keys.map((key) => `"${key}"`).join(', ');
+      const valid = Object.keys(shape).join(', ') || 'none';
+      return `Unknown parameter ${unknown}. Valid parameters: ${valid}.`;
+    },
+  });
+}
+
 // The generic overload infers handler args from inputSchema; the implementation signature widens the
 // config so the SDK's conditional ToolCallback type resolves to a concrete function type.
 export function defineTool<Shape extends ToolShape>(
@@ -32,7 +48,7 @@ export function defineTool(
   config: ToolConfig<ToolShape>,
   fetch: (args: Record<string, unknown>) => Promise<unknown>,
 ): void {
-  server.registerTool(name, config, async (args: Record<string, unknown>) => {
+  server.registerTool(name, { ...config, inputSchema: strictInput(config.inputSchema ?? {}) }, async (args) => {
     try {
       const result = await fetch(args);
       return {

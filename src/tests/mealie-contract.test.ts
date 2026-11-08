@@ -75,6 +75,8 @@ describe('Mealie route contract', () => {
     args.url &&= 'https://example.com/';
     // The raw filter and the structured filter fields exclude each other; exercise the structured ones.
     if ('query_filter_string' in args && 'tags' in args) delete args.query_filter_string;
+    // Merging a thing into itself is refused, so the two sides need different ids (the sampler gives both x7).
+    if ('from_id' in args && 'to_id' in args) args.to_id = '7';
     if ('image_base64' in args) args.image_base64 = 'aGk=';
     if ('file_base64' in args) args.file_base64 = 'aGk=';
 

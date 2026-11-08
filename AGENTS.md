@@ -4,7 +4,7 @@
 
 An MCP server for [Mealie](https://mealie.io). TypeScript, ESM, strict. Runs over stdio or streamable HTTP, and one HTTP server can serve many users who each act as themselves.
 
-**Current state:** 58 tools across 7 groups, stdio and HTTP transports, three exclusive HTTP auth modes, tool filtering via `--preset`/`--groups`/`--read-only`. Minimum supported Mealie version: **v3.29.0**.
+**Current state:** 60 tools across 7 groups, stdio and HTTP transports, three exclusive HTTP auth modes, tool filtering via `--preset`/`--groups`/`--read-only`. Minimum supported Mealie version: **v3.29.0**.
 
 ## Build & Test Commands
 
@@ -31,7 +31,7 @@ src/
 └── tools/
 │   ├── recipes.ts  # get_current_user, search_recipes, get_recipe, create_recipe, import_recipe_from_url, update_recipe, duplicate_recipe, mark_recipe_made, rate_recipe, delete_recipe
 │   ├── recipe-assets.ts  # set_recipe_image_from_url, upload_recipe_image, delete_recipe_image, upload_recipe_asset
-│   ├── ingredients.ts  # parse_ingredients, list_foods, create_food, update_food, delete_food, list_units, create_unit, update_unit, delete_unit
+│   ├── ingredients.ts  # parse_ingredients, list_foods, create_food, update_food, merge_foods, delete_food, list_units, create_unit, update_unit, merge_units, delete_unit
 │   ├── organizers.ts  # list_categories, list_unused_categories, create_category, rename_category, delete_category, list_tags, list_unused_tags, create_tag, rename_tag, delete_tag, list_recipe_tools, list_unused_recipe_tools, create_recipe_tool, rename_recipe_tool, delete_recipe_tool
 │   ├── cookbooks.ts  # list_cookbooks, get_cookbook, create_cookbook, update_cookbook, delete_cookbook
 │   ├── shopping.ts  # list_shopping_lists, get_shopping_list, create_shopping_list, rename_shopping_list, delete_shopping_list, add_shopping_items, update_shopping_item, delete_shopping_item, add_recipe_to_shopping_list
@@ -46,7 +46,7 @@ tests/automation/ # node:test suites for scripts/ and workflows
 |---|---|---|
 | `minimal` | recipes | 10 |
 | `default` | recipes, shopping, mealplans | 25 |
-| `full` | all 7 groups | 58 |
+| `full` | all 7 groups | 60 |
 
 ## Auth modes
 
@@ -140,7 +140,7 @@ A prerelease ships through the normal `release/X.Y.Z-alpha.N` → `main` PR and 
   - Docker: a prerelease pushes `:X.Y.Z-alpha.N` and `:next`; `:latest`, `:X` and `:X.Y` keep pointing at the newest stable image. A stable release that is the newest tag also pushes `:next`.
   - GitHub Release: marked a pre-release and never the repository's "latest release".
 - **`next` only moves forward.** `is-newest` compares the tag being released with every existing `v*` tag. A stable hotfix on an old line (`0.5.7` while `1.0.0-rc.1` exists) leaves `next` alone, and a prerelease older than an existing tag (`1.0.0-rc.2` after `1.0.0`) is refused outright.
-- **Moving `next` on a stable release is a separate npm call** (`npm dist-tag add`), which trusted publishing only performs when the package's trusted-publisher config has the "Allow npm dist-tag" permission enabled. The step is `continue-on-error`: the release stays good if it is missing, and the run prints the command to run by hand: `npm dist-tag add @daften/mealie-mcp@X.Y.Z next`.
+- **Moving `next` on a stable release is a separate npm call** (`npm dist-tag add`), which trusted publishing only performs when the package's trusted-publisher config has the "Allow npm dist-tag" permission enabled *and* npm is at least 11.21.0 (the step installs that version first; Node 24's bundled npm got `E401` on v0.1.0 with the permission already on, see [semantic-release/npm#1023](https://github.com/semantic-release/npm/issues/1023)). The step is `continue-on-error`: the release stays good if it is missing, and the run prints the command to run by hand: `npm dist-tag add @daften/mealie-mcp@X.Y.Z next`.
 - **`auto-release.yml` refuses to run while `package.json` is a prerelease** (`npm version patch` on `1.0.0-alpha.1` yields the stable `1.0.0`, so an unattended security release would publish it by accident). The workflow fails loudly on the Dependabot merge; cut that release by hand, as the next prerelease or as the stable version.
 - **Graduating:** the next release branch sets `version` to `X.Y.Z` and adds `## [X.Y.Z]`. The prerelease sections stay below it, immutable like any other.
 - **Nightlies** are a different channel (`develop`, never tagged) and keep working: on a prerelease `package.json` the nightly version is `X.Y.Z-nightly.<stamp>`, which sorts after every `X.Y.Z-alpha.*` and before `X.Y.Z`.

@@ -17,7 +17,7 @@ hero:
 
 features:
   - icon: 🛠️
-    title: 58 tools
+    title: 60 tools
     details: 7 groups covering recipes, images and assets, ingredients, organizers, cookbooks, shopping lists and meal plans.
   - icon: 🔌
     title: stdio & HTTP
