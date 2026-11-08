@@ -186,6 +186,7 @@ describe('discovery and registration', () => {
       string,
       unknown
     >;
+    expect(meta.resource).toBe(harness.base); // no trailing slash: Claude compares this with the typed URL
     expect(meta.authorization_servers).toEqual([`${harness.base}/`]);
     const as = (await (await fetch(`${harness.base}/.well-known/oauth-authorization-server`)).json()) as Record<
       string,

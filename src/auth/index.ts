@@ -43,6 +43,17 @@ export async function createLoginAuth(
   // The per-route limits still apply; the check would only add noise behind a reverse proxy.
   const rateLimit = { validate: false };
   const baseUrl = new URL(config.baseUrl);
+  // Ahead of the SDK's route, which would publish `https://host/`. Clients compare `resource` with the
+  // URL the user typed, and Claude's connector flow requires an exact match, so it has no trailing slash.
+  app.get('/.well-known/oauth-protected-resource', (_req, res) => {
+    res.set('Access-Control-Allow-Origin', '*').json({
+      resource: config.baseUrl,
+      authorization_servers: [baseUrl.href],
+      bearer_methods_supported: ['header'],
+      resource_name: 'Mealie MCP',
+    });
+  });
+
   app.use(
     mcpAuthRouter({
       provider,
