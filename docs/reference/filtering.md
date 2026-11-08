@@ -1,6 +1,6 @@
 # Tool filtering
 
-With 53 tools across 6 groups, loading everything consumes significant context window space. Three flags let you control exactly which tools are registered.
+With 58 tools across 7 groups, loading everything consumes significant context window space. Three flags let you control exactly which tools are registered.
 
 ## --preset \<name\>
 
@@ -10,7 +10,7 @@ Load a named subset of tool groups:
 |--------|----------------|-------|
 | `minimal` | recipes | 10 |
 | `default` | recipes, shopping, mealplans | 25 |
-| `full` | all 6 groups | 53 |
+| `full` | all 7 groups | 58 |
 
 ```bash
 node dist/index.js --preset default
@@ -21,7 +21,7 @@ npx @daften/mealie-mcp --preset minimal
 
 Comma-separated list of specific groups. Cannot combine with `--preset`.
 
-Valid group names: `recipes`, `recipe-assets`, `ingredients`, `organizers`, `shopping`, `mealplans`
+Valid group names: `recipes`, `recipe-assets`, `ingredients`, `organizers`, `cookbooks`, `shopping`, `mealplans`
 
 ```bash
 node dist/index.js --groups recipes,shopping
@@ -29,7 +29,7 @@ node dist/index.js --groups recipes,shopping
 
 ## --read-only
 
-Filter any selection down to read-only tools: every tool annotated `readOnlyHint: true` (16 tools with no other filter). All create, update, delete and upload tools are excluded. Can combine with `--preset` or `--groups`.
+Filter any selection down to read-only tools: every tool annotated `readOnlyHint: true` (18 tools with no other filter). All create, update, delete and upload tools are excluded. Can combine with `--preset` or `--groups`.
 
 Unrecognized flags are an error rather than being ignored, so a typo such as `--readonly` stops the server with a suggestion instead of starting it with write access. Value flags accept both `--flag value` and `--flag=value`.
 
@@ -37,7 +37,7 @@ Unrecognized flags are an error rather than being ignored, so a typo such as `--
 node dist/index.js --preset default --read-only
 ```
 
-Without any filter flags the server registers all 53 tools (equivalent to `--preset full`).
+Without any filter flags the server registers all 58 tools (equivalent to `--preset full`).
 
 ## Environment variable equivalents
 

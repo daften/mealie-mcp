@@ -73,6 +73,8 @@ describe('Mealie route contract', () => {
     const shape = mock.toolConfigs.get(name)?.inputSchema ?? {};
     const args = Object.fromEntries(Object.entries(shape).map(([key, schema]) => [key, sample(schema)]));
     args.url &&= 'https://example.com/';
+    // The raw filter and the structured filter fields exclude each other; exercise the structured ones.
+    if ('query_filter_string' in args && 'tags' in args) delete args.query_filter_string;
     if ('image_base64' in args) args.image_base64 = 'aGk=';
     if ('file_base64' in args) args.file_base64 = 'aGk=';
 

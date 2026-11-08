@@ -4,7 +4,7 @@
 
 An MCP server for [Mealie](https://mealie.io). TypeScript, ESM, strict. Runs over stdio or streamable HTTP, and one HTTP server can serve many users who each act as themselves.
 
-**Current state:** 53 tools across 6 groups, stdio and HTTP transports, three exclusive HTTP auth modes, tool filtering via `--preset`/`--groups`/`--read-only`. Minimum supported Mealie version: **v3.29.0**.
+**Current state:** 58 tools across 7 groups, stdio and HTTP transports, three exclusive HTTP auth modes, tool filtering via `--preset`/`--groups`/`--read-only`. Minimum supported Mealie version: **v3.29.0**.
 
 ## Build & Test Commands
 
@@ -33,6 +33,7 @@ src/
 │   ├── recipe-assets.ts  # set_recipe_image_from_url, upload_recipe_image, delete_recipe_image, upload_recipe_asset
 │   ├── ingredients.ts  # parse_ingredients, list_foods, create_food, update_food, delete_food, list_units, create_unit, update_unit, delete_unit
 │   ├── organizers.ts  # list_categories, list_unused_categories, create_category, rename_category, delete_category, list_tags, list_unused_tags, create_tag, rename_tag, delete_tag, list_recipe_tools, list_unused_recipe_tools, create_recipe_tool, rename_recipe_tool, delete_recipe_tool
+│   ├── cookbooks.ts  # list_cookbooks, get_cookbook, create_cookbook, update_cookbook, delete_cookbook
 │   ├── shopping.ts  # list_shopping_lists, get_shopping_list, create_shopping_list, rename_shopping_list, delete_shopping_list, add_shopping_items, update_shopping_item, delete_shopping_item, add_recipe_to_shopping_list
 │   └── mealplans.ts  # get_mealplans, get_todays_meals, create_mealplan_entry, create_random_mealplan_entry, update_mealplan_entry, delete_mealplan_entry
 scripts/          # release, changelog, audit and CI helpers
@@ -45,7 +46,7 @@ tests/automation/ # node:test suites for scripts/ and workflows
 |---|---|---|
 | `minimal` | recipes | 10 |
 | `default` | recipes, shopping, mealplans | 25 |
-| `full` | all 6 groups | 53 |
+| `full` | all 7 groups | 58 |
 
 ## Auth modes
 
