@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -281,6 +281,23 @@ test('the CLI `changed` command prints true or false', () => {
     assert.equal(run('changed', auditPath, a, b).stdout, 'true\n');
     assert.equal(run('changed', auditPath, a, a).stdout, 'false\n');
     assert.equal(run('changed', auditPath, a).status, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('plan still runs when the script is reached through a symlinked directory', () => {
+  // On macOS the temp dir sits behind a symlink (/var -> /private/var), and the workflow runs a copy from there.
+  const dir = mkdtempSync(join(tmpdir(), 'audit-link-'));
+  try {
+    const real = join(dir, 'real');
+    spawnSync('mkdir', ['-p', real]);
+    writeFileSync(join(real, 'audit-remediate.mjs'), readFileSync(script));
+    symlinkSync(real, join(dir, 'link'));
+    const fixture = fileURLToPath(new URL('./fixtures/npm-audit-vulnerable.json', import.meta.url));
+    const result = spawnSync('node', [join(dir, 'link', 'audit-remediate.mjs'), 'plan', fixture], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^zod$/m);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
