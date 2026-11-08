@@ -5,14 +5,14 @@
 | Tool | Description |
 |---|---|
 | `get_current_user` | Shows which Mealie account this connection acts as, with its group and household. |
-| `search_recipes` | Searches recipes by text and by category, tag, tool or food IDs. Returns summaries; use get_recipe for full details. |
+| `search_recipes` | Searches recipes by free text (`search`) and by `categories`, `tags`, `tools` and `foods`. Each filter takes IDs or slugs. Several values in one filter mean any of them, unless require_all is true. Returns summaries; use get_recipe for full details. |
 | `get_recipe` | Gets one recipe in full, including ingredients, instructions and nutrition. |
-| `create_recipe` | Creates a recipe from structured data. To import from a web page, use import_recipe_from_url. |
-| `import_recipe_from_url` | Has Mealie scrape a recipe web page and create a recipe from it. Returns the new slug. |
-| `update_recipe` | Changes the given fields of a recipe and leaves the rest alone. List fields are replaced as a whole. |
+| `create_recipe` | Creates a recipe from structured data. Ingredients with a food or unit need its id and name from list_foods / list_units; create missing ones first with create_food / create_unit. Quantities are decimals, and an ingredient that is not split into food and unit goes in note. To import from a web page, use import_recipe_from_url. Returns a short summary (id, slug, name, servings, tags, ingredient count, rating, image present); get_recipe has the full recipe. |
+| `import_recipe_from_url` | Has Mealie scrape a recipe web page and create a recipe from it. Returns the new slug; use get_recipe to review what was imported. Some sites block the scraper (ah.be answers 403): the call then fails with an error, and the recipe has to be added with create_recipe instead. Mealie returns no import warnings, so check the result. |
+| `update_recipe` | Changes the given fields of a recipe and leaves the rest alone. List fields (ingredients, instructions, notes, categories, tags, tools) are replaced as a whole, so send the complete list. Ingredient rules are the same as in create_recipe: food and unit need id and name from list_foods / list_units, quantities are decimals, unparsed text goes in note. Returns a short summary; get_recipe has the full recipe. |
 | `duplicate_recipe` | Copies a recipe, optionally under a new name. |
 | `mark_recipe_made` | Records that a recipe was made, today by default. |
-| `rate_recipe` | Sets the current user's own rating for a recipe, or marks it as a favorite. |
+| `rate_recipe` | Sets the rating (0 to 5) or favorite flag of the account this connection acts as, and replaces that account's earlier rating. Ratings are per user: there is no way to read or set another user's rating. |
 | `delete_recipe` | Permanently deletes a recipe. |
 
 ## recipe-assets
@@ -28,7 +28,7 @@
 
 | Tool | Description |
 |---|---|
-| `parse_ingredients` | Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food. |
+| `parse_ingredients` | Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food. It only reads: nothing is created, so a food or unit Mealie does not know may come back without an id. Create it with create_food / create_unit before using it in create_recipe. |
 | `list_foods` | Lists or searches foods in Mealie's shared vocabulary. Each item has its id and aliases. `search` is free text handled by Mealie; it is certain to look at the name, and whether it also matches plural names and aliases is up to Mealie, so try the plural or the alias too before concluding something is missing. |
 | `create_food` | Adds a food to Mealie's shared vocabulary. Recipes reference it by id, so create it here before using it in an ingredient. |
 | `update_food` | Changes the given fields of a food and leaves the others alone. |

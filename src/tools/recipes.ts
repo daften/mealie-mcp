@@ -35,16 +35,52 @@ export function summarizeRecipe(recipe: RecipeSummary) {
   };
 }
 
+type WrittenRecipe = Record<string, unknown> & {
+  tags?: Array<{ name: string }> | null;
+  recipeIngredient?: unknown[] | null;
+};
+
+/**
+ * Mealie answers a create or update with the whole recipe, every food and unit object included: hundreds of
+ * lines for one dish. The caller only needs to know it worked and which recipe it touched; get_recipe has the rest.
+ */
+export function summarizeWrittenRecipe(recipe: WrittenRecipe) {
+  return {
+    id: recipe.id,
+    slug: recipe.slug,
+    name: recipe.name,
+    servings: recipe.recipeServings,
+    total_time: recipe.totalTime,
+    tags: recipe.tags?.map((t) => t.name) ?? [],
+    ingredient_count: recipe.recipeIngredient?.length ?? 0,
+    rating: recipe.rating,
+    has_image: Boolean(recipe.image),
+  };
+}
+
 const organizerRef = z.looseObject({ id: z.uuid(), name: z.string(), slug: z.string() });
 
 const ingredient = z.looseObject({
   note: z
     .string()
     .optional()
-    .describe('Free text. Use this alone when the ingredient is not parsed into food and unit'),
-  quantity: z.number().optional(),
-  unit: z.looseObject({ id: z.uuid(), name: z.string() }).nullable().optional(),
-  food: z.looseObject({ id: z.uuid(), name: z.string() }).nullable().optional(),
+    .describe(
+      'Free text. An ingredient with no unit, food or quantity goes here alone, for example "salt to taste" or "two leeks". With a food it adds detail, for example "finely chopped"',
+    ),
+  quantity: z
+    .number()
+    .optional()
+    .describe('A decimal number: write 0.5 or 1.5, never "1/2". Leave it out when the ingredient has no amount'),
+  unit: z
+    .looseObject({ id: z.uuid(), name: z.string() })
+    .nullable()
+    .optional()
+    .describe('Needs both id and name, taken from list_units. Create a missing unit with create_unit first'),
+  food: z
+    .looseObject({ id: z.uuid(), name: z.string() })
+    .nullable()
+    .optional()
+    .describe('Needs both id and name, taken from list_foods. Create a missing food with create_food first'),
   title: z.string().nullable().optional().describe('Section heading shown above this ingredient'),
   originalText: z.string().nullable().optional(),
 });
@@ -53,11 +89,22 @@ const step = z.looseObject({ title: z.string().optional(), text: z.string() });
 
 const recipeFields = {
   description: z.string().optional(),
-  recipe_servings: z.number().optional(),
-  recipe_yield: z.string().optional().describe('Yield as free text, e.g. "2 loaves"'),
-  total_time: z.string().optional().describe('Free text, e.g. "1 hour 30 minutes"'),
-  prep_time: z.string().optional(),
-  cook_time: z.string().optional(),
+  recipe_servings: z
+    .number()
+    .optional()
+    .describe('How many portions the ingredient quantities are written for, a number such as 4. Mealie scales from it'),
+  recipe_yield: z
+    .string()
+    .optional()
+    .describe('What the recipe makes, as free text shown as is, e.g. "2 loaves". Separate from recipe_servings'),
+  total_time: z
+    .string()
+    .optional()
+    .describe(
+      'Free text, e.g. "1 hour 30 minutes". Never derived: Mealie does not add prep_time and cook_time, so set it yourself or it stays empty',
+    ),
+  prep_time: z.string().optional().describe('Free text, e.g. "20 minutes"'),
+  cook_time: z.string().optional().describe('Free text, e.g. "45 minutes"'),
   org_url: z.url().optional().describe('Original source URL'),
   ingredients: z.array(ingredient).optional().describe('Replaces the whole ingredient list'),
   instructions: z.array(step).optional().describe('Replaces all instruction steps'),
@@ -136,14 +183,17 @@ export function registerRecipeTools(server: McpServer, client: MealieClient): vo
     {
       title: 'Search recipes',
       description:
-        'Searches recipes by text and by category, tag, tool or food IDs. Returns summaries; use get_recipe for full details.',
+        'Searches recipes by free text (`search`) and by `categories`, `tags`, `tools` and `foods`. Each filter takes IDs or slugs. Several values in one filter mean any of them, unless require_all is true. Returns summaries; use get_recipe for full details.',
       inputSchema: {
         search: z.string().optional().describe('Free text search'),
         categories: z.array(z.string()).optional().describe('Category IDs or slugs'),
         tags: z.array(z.string()).optional().describe('Tag IDs or slugs'),
         tools: z.array(z.string()).optional().describe('Tool IDs or slugs'),
         foods: z.array(z.string()).optional().describe('Food IDs or slugs'),
-        require_all: z.boolean().optional().describe('Require every given filter value instead of any one'),
+        require_all: z
+          .boolean()
+          .optional()
+          .describe('Require every given value in each filter (a recipe needs all the tags) instead of any one'),
         order_by: z.string().optional().describe('Field such as name, rating, created_at or last_made'),
         order_direction: z.enum(['asc', 'desc']).optional(),
         ...paginationShape,
@@ -186,15 +236,16 @@ export function registerRecipeTools(server: McpServer, client: MealieClient): vo
     'create_recipe',
     {
       title: 'Create recipe',
-      description: 'Creates a recipe from structured data. To import from a web page, use import_recipe_from_url.',
+      description:
+        'Creates a recipe from structured data. Ingredients with a food or unit need its id and name from list_foods / list_units; create missing ones first with create_food / create_unit. Quantities are decimals, and an ingredient that is not split into food and unit goes in note. To import from a web page, use import_recipe_from_url. Returns a short summary (id, slug, name, servings, tags, ingredient count, rating, image present); get_recipe has the full recipe.',
       inputSchema: { name: z.string().min(1), ...recipeFields },
       annotations: WRITE_ANNOTATIONS,
     },
     async (args) => {
       const slug = await client.post<string>('/recipes', { name: args.name });
       const { name: _name, ...fields } = toRecipePatch(args);
-      if (Object.keys(fields).length === 0) return { slug };
-      return client.patch(`/recipes/${slug}`, fields);
+      if (Object.keys(fields).length === 0) return { slug, name: args.name };
+      return summarizeWrittenRecipe(await client.patch<WrittenRecipe>(`/recipes/${slug}`, fields));
     },
   );
 
@@ -203,7 +254,8 @@ export function registerRecipeTools(server: McpServer, client: MealieClient): vo
     'import_recipe_from_url',
     {
       title: 'Import recipe from URL',
-      description: 'Has Mealie scrape a recipe web page and create a recipe from it. Returns the new slug.',
+      description:
+        'Has Mealie scrape a recipe web page and create a recipe from it. Returns the new slug; use get_recipe to review what was imported. Some sites block the scraper (ah.be answers 403): the call then fails with an error, and the recipe has to be added with create_recipe instead. Mealie returns no import warnings, so check the result.',
       inputSchema: {
         url: z.url(),
         include_tags: z.boolean().optional().describe('Also import tags found on the page'),
@@ -225,11 +277,12 @@ export function registerRecipeTools(server: McpServer, client: MealieClient): vo
     {
       title: 'Update recipe',
       description:
-        'Changes the given fields of a recipe and leaves the rest alone. List fields are replaced as a whole.',
+        'Changes the given fields of a recipe and leaves the rest alone. List fields (ingredients, instructions, notes, categories, tags, tools) are replaced as a whole, so send the complete list. Ingredient rules are the same as in create_recipe: food and unit need id and name from list_foods / list_units, quantities are decimals, unparsed text goes in note. Returns a short summary; get_recipe has the full recipe.',
       inputSchema: { slug: slugSchema, name: z.string().min(1).optional(), ...recipeFields },
       annotations: UPDATE_ANNOTATIONS,
     },
-    ({ slug, ...fields }) => client.patch(`/recipes/${slug}`, toRecipePatch(fields)),
+    async ({ slug, ...fields }) =>
+      summarizeWrittenRecipe(await client.patch<WrittenRecipe>(`/recipes/${slug}`, toRecipePatch(fields))),
   );
 
   defineTool(
@@ -262,7 +315,8 @@ export function registerRecipeTools(server: McpServer, client: MealieClient): vo
     'rate_recipe',
     {
       title: 'Rate recipe',
-      description: "Sets the current user's own rating for a recipe, or marks it as a favorite.",
+      description:
+        "Sets the rating (0 to 5) or favorite flag of the account this connection acts as, and replaces that account's earlier rating. Ratings are per user: there is no way to read or set another user's rating.",
       inputSchema: {
         slug: slugSchema,
         rating: z.number().min(0).max(5).optional(),
