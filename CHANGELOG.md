@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-11-08
+
+First prerelease, published to the `next` channel. Requires Mealie v3.29.0 or later.
+
 ### Added
 
 - Tools for recipes, recipe images and assets, ingredients, foods and units, organizers, shopping lists and meal plans.
@@ -14,4 +18,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP auth modes: per-caller API key (default), server-wide API key, and an opt-in login form.
 - Encrypted SQLite token store so logins survive restarts and image updates.
 
-[Unreleased]: https://github.com/daften/mealie-mcp/commits/develop
+[Unreleased]: https://github.com/daften/mealie-mcp/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/daften/mealie-mcp/releases/tag/v0.1.0-alpha.1
