@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Mealie bug or question
+    url: https://github.com/mealie-recipes/mealie/issues
+    about: Issues with Mealie itself (not the MCP server) belong upstream.
+  - name: Mealie community
+    url: https://github.com/mealie-recipes/mealie/discussions
+    about: General Mealie questions and discussion.
+  - name: MCP protocol questions
+    url: https://github.com/modelcontextprotocol/specification/discussions
+    about: Questions about the Model Context Protocol itself.
