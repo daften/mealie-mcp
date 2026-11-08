@@ -58,6 +58,16 @@
 | `rename_recipe_tool` | Renames a recipe tool. |
 | `delete_recipe_tool` | Permanently deletes a recipe tool and removes it from every recipe. |
 
+## cookbooks
+
+| Tool | Description |
+|---|---|
+| `list_cookbooks` | Lists the household’s cookbooks. A cookbook is a saved recipe filter, so each one shows its query_filter_string. |
+| `get_cookbook` | Gets one cookbook, including its recipe filter. |
+| `create_cookbook` | Creates a cookbook: a named, saved recipe filter. For a "Freezer menu" of everything tagged freezer, create or find the tag, then pass its ID in tags. Recipes are matched by the filter and never added by hand. |
+| `update_cookbook` | Changes the given fields of a cookbook and leaves the others alone. Giving any filter field replaces the whole existing filter. |
+| `delete_cookbook` | Permanently deletes a cookbook. The recipes it showed are not touched. |
+
 ## shopping
 
 | Tool | Description |

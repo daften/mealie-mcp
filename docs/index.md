@@ -17,8 +17,8 @@ hero:
 
 features:
   - icon: 🛠️
-    title: 53 tools
-    details: 6 groups covering recipes, images and assets, ingredients, organizers, shopping lists and meal plans.
+    title: 58 tools
+    details: 7 groups covering recipes, images and assets, ingredients, organizers, cookbooks, shopping lists and meal plans.
   - icon: 🔌
     title: stdio & HTTP
     details: Connect locally with an API token, or self-host one server for a whole household.
