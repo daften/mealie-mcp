@@ -25,6 +25,7 @@
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:integration": "dotenv -e .env.test -- vitest run src/tests/integration.test.ts",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

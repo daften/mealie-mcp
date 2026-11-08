@@ -1,0 +1,10 @@
+services:
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:latest
+    container_name: mealie-ci
+    environment:
+      ALLOW_SIGNUP: "false"
+      BASE_URL: "http://localhost:9925"
+      DB_ENGINE: sqlite
+    ports:
+      - "9925:9000"
