@@ -72,10 +72,62 @@ describe('recipes', () => {
   it('creates then patches only when there are extra fields', async () => {
     const client = mockClient({ post: vi.fn(async () => 'soup') });
     const m = setup(client);
-    expect(JSON.parse((await run(m, 'create_recipe', { name: 'Soup' })).content[0].text)).toEqual({ slug: 'soup' });
+    expect(JSON.parse((await run(m, 'create_recipe', { name: 'Soup' })).content[0].text)).toEqual({
+      slug: 'soup',
+      name: 'Soup',
+    });
     expect(client.patch).not.toHaveBeenCalled();
     await run(m, 'create_recipe', { name: 'Soup', description: 'Hot' });
     expect(client.patch).toHaveBeenCalledWith('/recipes/soup', { description: 'Hot' });
+  });
+  const FULL_RECIPE = {
+    id: 'r1',
+    slug: 'soup',
+    name: 'Soup',
+    recipeServings: 4,
+    totalTime: null,
+    rating: 4,
+    image: 'abc',
+    tags: [{ id: 't', name: 'freezer', slug: 'freezer' }],
+    recipeIngredient: Array.from({ length: 12 }, (_, i) => ({
+      quantity: i,
+      food: { id: `f${i}`, name: `food ${i}`, extras: {}, labelId: null, aliases: [] },
+      unit: { id: `u${i}`, name: `unit ${i}`, fraction: true, aliases: [] },
+    })),
+    recipeInstructions: Array.from({ length: 10 }, (_, i) => ({ text: `step ${i}` })),
+  };
+  it('returns a short summary from create_recipe, not the whole recipe', async () => {
+    const client = mockClient({ post: vi.fn(async () => 'soup'), patch: vi.fn(async () => FULL_RECIPE) });
+    const text = (await run(setup(client), 'create_recipe', { name: 'Soup', description: 'Hot' })).content[0].text;
+    expect(JSON.parse(text)).toEqual({
+      id: 'r1',
+      slug: 'soup',
+      name: 'Soup',
+      servings: 4,
+      total_time: null,
+      tags: ['freezer'],
+      ingredient_count: 12,
+      rating: 4,
+      has_image: true,
+    });
+    expect(JSON.stringify(JSON.parse(text), null, 2).split('\n').length).toBeLessThan(30);
+  });
+  it('returns the same short summary from update_recipe', async () => {
+    const client = mockClient({ patch: vi.fn(async () => ({ ...FULL_RECIPE, image: null })) });
+    const text = (await run(setup(client), 'update_recipe', { slug: 'soup', description: 'Hotter' })).content[0].text;
+    expect(JSON.parse(text)).toMatchObject({ slug: 'soup', ingredient_count: 12, has_image: false });
+    expect(text).not.toContain('recipeInstructions');
+  });
+  it('tells the model what ingredients need and that total time is not derived', () => {
+    const { toolConfigs } = setup();
+    const create = toolConfigs.get('create_recipe');
+    expect(create?.description).toContain('list_foods');
+    expect(create?.description).toContain('note');
+    const fields = create?.inputSchema ?? {};
+    expect(fields.total_time.description).toContain('Never derived');
+    expect(fields.recipe_servings.description).not.toBe(fields.recipe_yield.description);
+    expect(toolConfigs.get('rate_recipe')?.description).toContain('another user');
+    expect(toolConfigs.get('search_recipes')?.description).toContain('IDs or slugs');
   });
   it('maps field names and leaves unmentioned ones out', () => {
     expect(toRecipePatch({ recipe_servings: 4, org_url: 'https://x.example' })).toEqual({

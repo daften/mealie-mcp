@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `create_recipe` and `update_recipe` return a short summary (id, slug, name, servings, total time, tags, ingredient count, rating, whether it has an image) instead of the whole recipe. `get_recipe` still returns everything.
+- Sharper tool descriptions: ingredient `food` and `unit` need an id and name from `list_foods` / `list_units`, quantities are decimals, unparsed text goes in `note`, `total_time` is never derived from prep and cook time, ratings are per user, and `search_recipes` filters take IDs or slugs and mean "any" unless `require_all` is set. `import_recipe_from_url` says what happens when a site blocks the scraper, and `parse_ingredients` says it creates nothing.
+
 ## [0.1.0] - 2026-11-08
 
 First stable release. It is the same code as 0.1.0-alpha.2, now published as `latest`. Requires Mealie v3.29.0 or later.

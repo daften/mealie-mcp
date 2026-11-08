@@ -121,8 +121,9 @@ describe.skipIf(SKIP)('Integration: live Mealie', () => {
       settings: { showNutrition: true },
     });
     const { slug } = recipe;
-    expect(recipe.recipeIngredient).toHaveLength(2);
-    expect(recipe.recipeInstructions).toHaveLength(2);
+    expect(recipe.ingredient_count).toBe(2);
+    expect(recipe.recipeIngredient).toBeUndefined(); // a short summary, not the whole recipe
+    expect((await admin('get_recipe', { slug })).recipeInstructions).toHaveLength(2);
 
     await admin('update_recipe', { slug, description: 'Hotter' });
     const updated = await admin('get_recipe', { slug });

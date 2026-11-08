@@ -19,7 +19,8 @@ export function registerIngredientTools(server: McpServer, client: MealieClient)
     'parse_ingredients',
     {
       title: 'Parse ingredients',
-      description: "Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food.",
+      description:
+        "Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food. It only reads: nothing is created, so a food or unit Mealie does not know may come back without an id. Create it with create_food / create_unit before using it in create_recipe.",
       inputSchema: {
         ingredients: z.array(z.string().min(1)).min(1),
         parser: z.enum(['nlp', 'brute', 'openai']).optional().describe('nlp by default'),
