@@ -1,3 +1,6 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { MealieClient } from '../client.js';
 import { decodeBase64, mergePut, shapePage } from '../tools/_helpers.js';
@@ -55,6 +58,42 @@ describe('registration', () => {
     const { toolConfigs } = setup(mockClient(), { readOnly: true });
     expect(toolConfigs.has('search_recipes')).toBe(true);
     for (const [name, config] of toolConfigs) expect(config.annotations?.readOnlyHint, name).toBe(true);
+  });
+});
+
+describe('strict inputs', () => {
+  it('rejects an unknown parameter, naming it and listing the valid ones', () => {
+    const { schemas } = setup();
+    const result = schemas.get('search_recipes')?.safeParse({ query: 'soup' });
+    expect(result?.success).toBe(false);
+    const message = result?.error?.issues[0].message ?? '';
+    expect(message).toContain('"query"');
+    expect(message).toContain('search, categories, tags');
+  });
+  it('accepts every parameter a tool declares', () => {
+    const { schemas } = setup();
+    expect(schemas.get('search_recipes')?.safeParse({ search: 'soup', tags: ['a'], page: 1 }).success).toBe(true);
+  });
+  it('rejects unknown parameters on every tool, including ones that take none', () => {
+    const { schemas } = setup();
+    expect(schemas.size).toBeGreaterThan(50);
+    for (const [name, schema] of schemas) {
+      expect(schema.safeParse({ definitely_not_a_parameter: 1 }).success, name).toBe(false);
+    }
+  });
+  it('reaches the client as a clear error over a real MCP connection', async () => {
+    const server = new McpServer({ name: 'test', version: '0' });
+    registerAllTools(server, mockClient());
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'test', version: '0' });
+    await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
+    const outcome = await client
+      .callTool({ name: 'search_recipes', arguments: { query: 'soup' } })
+      .then((r) => JSON.stringify(r))
+      .catch((e: Error) => e.message);
+    expect(outcome).toContain('Unknown parameter');
+    expect(outcome).toContain('query');
+    await client.close();
   });
 });
 
@@ -206,6 +245,60 @@ describe('cookbooks', () => {
       id: COOKBOOK,
       queryFilterString: '',
     });
+  });
+});
+
+describe('foods and units', () => {
+  const FROM = '55555555-5555-4555-8555-555555555555';
+  const TO = '66666666-6666-4666-8666-666666666666';
+  it('creates a gram unit with fractions off and the short form on', async () => {
+    const client = mockClient();
+    await run(setup(client), 'create_unit', {
+      name: 'gram',
+      abbreviation: 'g',
+      plural_abbreviation: 'g',
+      use_abbreviation: true,
+      fraction: false,
+      aliases: ['gr'],
+    });
+    expect(client.post).toHaveBeenCalledWith('/units', {
+      name: 'gram',
+      abbreviation: 'g',
+      pluralAbbreviation: 'g',
+      useAbbreviation: true,
+      fraction: false,
+      aliases: [{ name: 'gr' }],
+    });
+  });
+  it('switches fractions off on an existing unit and keeps its other fields', async () => {
+    const client = mockClient({ get: vi.fn(async () => ({ id: FROM, name: 'kilogram', fraction: true })) });
+    await run(setup(client), 'update_unit', { id: FROM, fraction: false });
+    expect(client.put).toHaveBeenCalledWith(`/units/${FROM}`, { id: FROM, name: 'kilogram', fraction: false });
+  });
+  it('gives foods aliases but not the unit-only fields', () => {
+    const { toolConfigs } = setup();
+    expect(Object.keys(toolConfigs.get('update_food')?.inputSchema ?? {})).toContain('aliases');
+    expect(Object.keys(toolConfigs.get('update_food')?.inputSchema ?? {})).not.toContain('fraction');
+    expect(Object.keys(toolConfigs.get('update_unit')?.inputSchema ?? {})).toContain('fraction');
+  });
+  it('merges foods and units with the body Mealie expects', async () => {
+    const client = mockClient();
+    const m = setup(client);
+    await run(m, 'merge_foods', { from_id: FROM, to_id: TO });
+    expect(client.put).toHaveBeenCalledWith('/foods/merge', { fromFood: FROM, toFood: TO });
+    await run(m, 'merge_units', { from_id: FROM, to_id: TO });
+    expect(client.put).toHaveBeenCalledWith('/units/merge', { fromUnit: FROM, toUnit: TO });
+  });
+  it('refuses to merge something into itself', async () => {
+    const client = mockClient();
+    const result = await run(setup(client), 'merge_foods', { from_id: FROM, to_id: FROM });
+    expect(result.isError).toBe(true);
+    expect(client.put).not.toHaveBeenCalled();
+  });
+  it('marks merges as destructive so read-only mode drops them', () => {
+    const { toolConfigs } = setup(mockClient(), { readOnly: true });
+    expect(toolConfigs.has('merge_foods')).toBe(false);
+    expect(toolConfigs.has('merge_units')).toBe(false);
   });
 });
 

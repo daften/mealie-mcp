@@ -29,14 +29,16 @@
 | Tool | Description |
 |---|---|
 | `parse_ingredients` | Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food. It only reads: nothing is created, so a food or unit Mealie does not know may come back without an id. Create it with create_food / create_unit before using it in create_recipe. |
-| `list_foods` | Lists or searches foods in Mealie's shared vocabulary. |
-| `create_food` | Adds a food to Mealie's shared vocabulary. |
-| `update_food` | Changes the given fields of a food. |
-| `delete_food` | Permanently deletes a food. Ingredients using it lose the link. |
-| `list_units` | Lists or searches units in Mealie's shared vocabulary. |
-| `create_unit` | Adds a unit to Mealie's shared vocabulary. |
-| `update_unit` | Changes the given fields of a unit. |
-| `delete_unit` | Permanently deletes a unit. Ingredients using it lose the link. |
+| `list_foods` | Lists or searches foods in Mealie's shared vocabulary. Each item has its id and aliases. `search` is free text handled by Mealie; it is certain to look at the name, and whether it also matches plural names and aliases is up to Mealie, so try the plural or the alias too before concluding something is missing. |
+| `create_food` | Adds a food to Mealie's shared vocabulary. Recipes reference it by id, so create it here before using it in an ingredient. |
+| `update_food` | Changes the given fields of a food and leaves the others alone. |
+| `merge_foods` | Merges one food into another. from_id disappears and every ingredient that used it moves to to_id, so recipes keep their links. Use this for near-duplicates instead of delete_food, which unlinks the ingredients. Cannot be undone. |
+| `delete_food` | Permanently deletes a food. Ingredients using it lose the link; to keep them, use merge_foods instead. |
+| `list_units` | Lists or searches units in Mealie's shared vocabulary. Each item has its id, abbreviations, fraction and use_abbreviation settings and aliases. `search` is free text handled by Mealie; it is certain to look at the name, and whether it also matches plural names and aliases is up to Mealie, so try the plural or the alias too before concluding something is missing. |
+| `create_unit` | Adds a unit to Mealie's shared vocabulary. Recipes reference it by id, so create it here before using it in an ingredient. |
+| `update_unit` | Changes the given fields of a unit and leaves the others alone. |
+| `merge_units` | Merges one unit into another. from_id disappears and every ingredient that used it moves to to_id, so recipes keep their links. Use this for near-duplicates instead of delete_unit, which unlinks the ingredients. Cannot be undone. |
+| `delete_unit` | Permanently deletes a unit. Ingredients using it lose the link; to keep them, use merge_units instead. |
 
 ## organizers
 
