@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -69,7 +69,11 @@ describe('TokenStore', () => {
   });
 
   it('fails clearly on an unwritable directory', async () => {
-    await expect(TokenStore.open('/proc/nope/data', SECRET)).rejects.toBeInstanceOf(ConfigError);
+    // A file as the parent, not a /proc path: Node's recursive mkdir never returns on those under Linux,
+    // and permission bits don't stop root, which is what some containers run as.
+    const file = join(tempDir(), 'not-a-directory');
+    writeFileSync(file, '');
+    await expect(TokenStore.open(join(file, 'data'), SECRET)).rejects.toBeInstanceOf(ConfigError);
   });
 
   it('expires access tokens and never accepts a refresh token as one', async () => {
