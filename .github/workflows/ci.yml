@@ -1,24 +1,153 @@
 name: CI
 
 on:
-  push:
-    branches: [develop, main]
   pull_request:
+  push:
+    branches: [main, develop]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  check:
+  changelog:
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22, 24]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify CHANGELOG.md is updated
+        env:
+          # env indirection: the PR title is attacker-controlled text and must
+          # never be spliced into shell source.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          if echo "$TITLE" | grep -qi '\[skip changelog\]'; then
+            echo "Skipping changelog check ([skip changelog] in PR title)."
+            exit 0
+          fi
+          if git diff --name-only "$BASE" "$HEAD" | grep -q "^CHANGELOG.md$"; then
+            echo "CHANGELOG.md updated."
+          else
+            echo "::error file=CHANGELOG.md::CHANGELOG.md was not updated. Add an entry under [Unreleased], or include '[skip changelog]' in the PR title for chore/docs-only changes."
+            exit 1
+          fi
+
+  # Separate from the `changelog` job above, which is pull_request-only. This one also runs on
+  # pushes, because the corruption it looks for arrives most often via backmerge.yml — which pushes
+  # straight to develop with no PR, and whose own conflict path is exactly what merge=union
+  # suppresses. See scripts/changelog-guard.mjs for the failure shapes.
+  changelog-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tags included: a released section is compared against the tag that published it, not
+          # against whatever the base branch happens to hold now.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Guard CHANGELOG.md against silent union-merge corruption
+        env:
+          # env indirection: the PR title is attacker-controlled text and must never be spliced
+          # into shell source.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if echo "$TITLE" | grep -qi '\[skip changelog-guard\]'; then
+            export CHANGELOG_GUARD_SKIP=true
+          fi
+          node scripts/changelog-guard.mjs
+
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed by the coverage report action to post/update the sticky PR comment.
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24, 26]
+    name: test (node ${{ matrix.node-version }})
+    steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm run build
+
+      - name: Install dependencies
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Lint (Biome)
+        run: npx biome ci src/
+
+      - run: npx tsc --noEmit
+
+      # tsconfig.json excludes src/tests from the build, and Vitest does not type-check, so without
+      # this step type errors in tests (and in what they assert about the tools) go unnoticed.
+      - name: Type-check tests
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Test automation scripts
+        run: node --test tests/automation/*.node-test.mjs
+
+      - name: Test (with coverage on Node 22)
+        run: |
+          if [ "${{ matrix.node-version }}" = "22" ]; then
+            npm run test:coverage
+          else
+            npm test
+          fi
+
+      - name: Report coverage on PR
+        # always() so the comment also appears (with red numbers) when tests fail.
+        if: always() && github.event_name == 'pull_request' && matrix.node-version == 22
+        uses: davelosert/vitest-coverage-report-action@8f86cfb56ed6d5613ea8cdc5259f207fbfd51ece # v2.13.1
+  # Relative audit: a PR may not introduce moderate+ advisories that its base
+  # doesn't already have. Deliberately NOT absolute — when several security
+  # advisories are open at once, each fix-PR would fail an absolute audit
+  # because of the advisories the *other* PRs fix, deadlocking auto-merge.
+  # The strict absolute audit runs in nightly.yml instead.
+  audit:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # npm audit only needs package.json + the lockfile (no node_modules),
+      # so the base side runs from two files extracted into a scratch dir.
+      - name: Audit (no new moderate+ advisories vs base)
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          npm audit --json --omit=dev > /tmp/head-audit.json || true
+          git fetch --depth=1 origin "$BASE_SHA"
+          mkdir -p /tmp/base-pkg
+          git show "$BASE_SHA:package.json" > /tmp/base-pkg/package.json
+          git show "$BASE_SHA:package-lock.json" > /tmp/base-pkg/package-lock.json
+          (cd /tmp/base-pkg && npm audit --json --omit=dev > /tmp/base-audit.json) || true
+          bash scripts/audit-compare.sh /tmp/base-audit.json /tmp/head-audit.json

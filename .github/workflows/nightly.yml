@@ -1,0 +1,77 @@
+name: Nightly Integration Tests
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC every night
+  workflow_dispatch:        # allow manual trigger
+
+permissions: {}
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          for attempt in 1 2 3; do
+            if npm ci; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Start Mealie
+        run: docker compose -f docker-compose.ci.yml up -d
+
+      - name: Create test user and token
+        id: mealie-token
+        run: |
+          TOKEN=$(bash scripts/ci-create-token.sh http://localhost:9925)
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          MEALIE_INTEGRATION: 'true'
+          MEALIE_URL: 'http://localhost:9925'
+          MEALIE_API_TOKEN: ${{ steps.mealie-token.outputs.token }}
+
+      - name: Stop Mealie
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down
+
+  # The strict absolute audit lives here (not in PR CI — see ci.yml's audit
+  # job comment). Red means an advisory is outstanding on develop, including
+  # unfixable ones waiting on upstream; it alerts the maintainer via the
+  # scheduled-workflow failure email without blocking any merge. When it
+  # fails, audit-remediate.yml (triggered by this workflow's completion)
+  # opens a PR with the lockfile fix for whatever can be fixed.
+  strict-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Strict production audit (moderate+)
+        run: npm audit --audit-level=moderate --omit=dev

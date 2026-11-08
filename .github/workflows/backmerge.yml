@@ -1,0 +1,132 @@
+name: Back-merge main into develop
+
+# Keeps develop a superset of main. Runs on every push to main (security
+# releases, hotfixes, the release merge itself). Merges and pushes directly
+# when the merge is clean AND changelog-guard.mjs accepts the result, and
+# only opens a PR when a human is needed — a PR that is opened and merged
+# two seconds later is pure noise. Merge-commit, never squash: shared
+# history is what keeps subsequent back-merges conflict-free.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: backmerge
+  cancel-in-progress: false
+
+jobs:
+  backmerge:
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      REPO: daften/mealie-mcp
+    steps:
+      # RELEASE_TOKEN, not GITHUB_TOKEN: a GITHUB_TOKEN push does not trigger
+      # downstream workflows, and develop's push CI should run on the result.
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+          persist-credentials: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Merge main into develop
+        id: merge
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          # Retried: the concurrency group serialises this workflow against
+          # itself, but not against a feature PR merging into develop between
+          # our fetch and our push. On rejection, re-merge onto the new tip.
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main develop
+            git checkout --quiet -B develop origin/develop
+
+            if [ "$(git rev-list --count origin/develop..origin/main)" = "0" ]; then
+              echo "develop already contains main; nothing to do."
+              exit 0
+            fi
+
+            # --no-ff so the back-merge is always a merge commit, matching the
+            # repo-wide rule, even when develop could fast-forward.
+            if ! git merge --no-ff origin/main -m 'chore: back-merge main into develop'; then
+              if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+                echo "::error::git merge failed without unmerged files; inspect the Git error above."
+                exit 1
+              fi
+              git merge --abort
+              echo "conflict=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            # A hotfix on main that adds a "### Security" bullet under [Unreleased] meets develop's own
+            # "### Security" heading there: merge=union keeps both, git calls it clean, and the guard
+            # below would reject two headings with the same name. Folding them is mechanical (one right
+            # answer, AGENTS.md "Hotfix releases"), so do it here instead of opening a PR for it. Only
+            # [Unreleased] is touched. A failure of the fold itself must not break the back-merge: the
+            # guard still runs, and a PR is still the fallback.
+            if ! node scripts/changelog-fold-headings.mjs; then
+              echo "::warning::changelog-fold-headings.mjs failed; continuing to the guard."
+            fi
+            if ! git diff --quiet -- CHANGELOG.md; then
+              git add CHANGELOG.md
+              git commit --quiet -m 'chore: fold duplicate changelog headings after back-merge'
+            fi
+
+            # A clean git merge is not proof the union driver filed CHANGELOG.md's lines under the
+            # right section (see scripts/changelog-guard.mjs) — and this is the one place that
+            # corruption is introduced, before it reaches develop with no PR to catch it. Compare
+            # against origin/main's pre-merge CHANGELOG.md, since that push is what everything after
+            # it (ci.yml's push run, nightly, publish.yml) would otherwise have to catch after the
+            # fact against whatever tag happens to exist by then.
+            if ! node scripts/changelog-guard.mjs --baseline-ref=origin/main; then
+              # The merge already committed locally, but nothing is pushed above this line, so
+              # simply not pushing it is enough — there is no in-progress merge left to abort.
+              echo "conflict=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if git push origin develop; then
+              echo "Back-merged main into develop."
+              exit 0
+            fi
+            PREVIOUS_TIP=$(git rev-parse origin/develop)
+            git fetch --quiet origin develop
+            if [ "$PREVIOUS_TIP" = "$(git rev-parse origin/develop)" ]; then
+              echo "::error::Push failed but develop has not moved; check token permissions, branch rules, and network errors above."
+              exit 1
+            fi
+            echo "develop moved. Retrying (attempt ${attempt}/3)."
+          done
+
+          echo "::error::back-merge could not be pushed after 3 attempts"
+          exit 1
+
+      # Reached on a git-level conflict, or on a clean merge that
+      # changelog-guard.mjs rejected (the union driver filed a line under
+      # the wrong section). Routine during active development: releases and
+      # feature PRs both edit the top of CHANGELOG.md. Resolve by keeping
+      # both sides.
+      - name: Open PR for manual conflict resolution
+        if: steps.merge.outputs.conflict == 'true'
+        run: |
+          NUMBER=$(gh pr list --repo "$REPO" --base develop --head main --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -z "$NUMBER" ]; then
+            URL=$(gh pr create --repo "$REPO" --base develop --head main \
+              --title "chore: back-merge main into develop [skip changelog]" \
+              --body "The automated back-merge of \`main\` into \`develop\` hit a conflict, or merged cleanly but failed scripts/changelog-guard.mjs, and needs manual resolution. Keep both sides: the released \`## [X.Y.Z]\` section and the remaining \`[Unreleased]\` entries.")
+            NUMBER="${URL##*/}"
+          fi
+          echo "::error::back-merge conflicted; PR #${NUMBER} is open for manual resolution"
+          exit 1
