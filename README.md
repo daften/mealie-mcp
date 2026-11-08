@@ -1,4 +1,10 @@
-# Mealie MCP server
+# MCP server for Mealie
+
+[![npm version](https://img.shields.io/npm/v/@daften/mealie-mcp.svg)](https://www.npmjs.com/package/@daften/mealie-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@daften/mealie-mcp.svg)](https://www.npmjs.com/package/@daften/mealie-mcp)
+[![CI](https://github.com/daften/mealie-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/daften/mealie-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-daften.github.io-blue)](https://daften.github.io/mealie-mcp/)
 
 Connects AI assistants to [Mealie](https://mealie.io) through the [Model Context Protocol](https://modelcontextprotocol.io): search and write recipes, manage shopping lists, and plan meals.
 
@@ -57,8 +63,10 @@ See the [login form guide](docs/guide/login-form.md) before enabling it.
 - [Docker and API keys](docs/guide/docker.md)
 - [Login form](docs/guide/login-form.md)
 - [Environment variables](docs/reference/env-vars.md)
+- [Tool filtering](docs/reference/filtering.md)
+- [Contributing](CONTRIBUTING.md)
 
-Tested against Mealie v3.30.0. Requires Node.js 22.13 or newer.
+Requires Mealie v3.29.0 or later (tested through v3.30.0) and Node.js 22.13 or newer.
 
 ## License
 
