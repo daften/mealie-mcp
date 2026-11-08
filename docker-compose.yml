@@ -1,0 +1,29 @@
+services:
+  mealie-mcp:
+    image: ghcr.io/daften/mealie-mcp:latest
+    # build: .  # Uncomment to build locally instead of pulling from registry
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MEALIE_URL: ${MEALIE_URL}
+      # Leave unset so each caller sends their own Mealie API key. If set, everyone who can
+      # reach this port acts as that one Mealie user.
+      MEALIE_API_TOKEN: ${MEALIE_API_TOKEN:-}
+      # Login form mode. Exclusive with MEALIE_API_TOKEN. See .env.example before enabling.
+      MEALIE_MCP_PASSWORD_LOGIN: ${MEALIE_MCP_PASSWORD_LOGIN:-}
+      MCP_TOKEN_KEY: ${MCP_TOKEN_KEY:-}
+      MCP_BASE_URL: ${MCP_BASE_URL:-}
+      MCP_TRUST_PROXY_HOPS: ${MCP_TRUST_PROXY_HOPS:-}
+      MCP_PRESET: ${MCP_PRESET:-}
+      MCP_GROUPS: ${MCP_GROUPS:-}
+      MCP_READ_ONLY: ${MCP_READ_ONLY:-}
+    volumes:
+      # Holds login-mode tokens, so logins survive restarts and image updates.
+      - mealie-mcp-data:/data
+    restart: unless-stopped
+
+volumes:
+  mealie-mcp-data:

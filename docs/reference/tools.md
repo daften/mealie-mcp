@@ -1,0 +1,84 @@
+# Tools
+
+## recipes
+
+| Tool | Description |
+|---|---|
+| `get_current_user` | Shows which Mealie account this connection acts as, with its group and household. |
+| `search_recipes` | Searches recipes by text and by category, tag, tool or food IDs. Returns summaries; use get_recipe for full details. |
+| `get_recipe` | Gets one recipe in full, including ingredients, instructions and nutrition. |
+| `create_recipe` | Creates a recipe from structured data. To import from a web page, use import_recipe_from_url. |
+| `import_recipe_from_url` | Has Mealie scrape a recipe web page and create a recipe from it. Returns the new slug. |
+| `update_recipe` | Changes the given fields of a recipe and leaves the rest alone. List fields are replaced as a whole. |
+| `duplicate_recipe` | Copies a recipe, optionally under a new name. |
+| `mark_recipe_made` | Records that a recipe was made, today by default. |
+| `rate_recipe` | Sets the current user's own rating for a recipe, or marks it as a favorite. |
+| `delete_recipe` | Permanently deletes a recipe. |
+
+## recipe-assets
+
+| Tool | Description |
+|---|---|
+| `set_recipe_image_from_url` | Has Mealie download an image and use it as the recipe image. |
+| `upload_recipe_image` | Replaces the recipe image with an uploaded file, up to about 12 MB. |
+| `delete_recipe_image` | Removes the image from a recipe. |
+| `upload_recipe_asset` | Attaches a file, such as a PDF of the original recipe, up to about 12 MB. |
+
+## ingredients
+
+| Tool | Description |
+|---|---|
+| `parse_ingredients` | Uses Mealie's parser to split free-text ingredient lines into quantity, unit and food. |
+| `list_foods` | Lists or searches foods in Mealie's shared vocabulary. |
+| `create_food` | Adds a food to Mealie's shared vocabulary. |
+| `update_food` | Changes the given fields of a food. |
+| `delete_food` | Permanently deletes a food. Ingredients using it lose the link. |
+| `list_units` | Lists or searches units in Mealie's shared vocabulary. |
+| `create_unit` | Adds a unit to Mealie's shared vocabulary. |
+| `update_unit` | Changes the given fields of a unit. |
+| `delete_unit` | Permanently deletes a unit. Ingredients using it lose the link. |
+
+## organizers
+
+| Tool | Description |
+|---|---|
+| `list_categories` | Lists or searches categories. |
+| `list_unused_categories` | Lists categories that no recipe uses. |
+| `create_category` | Creates a category. |
+| `rename_category` | Renames a category. |
+| `delete_category` | Permanently deletes a category and removes it from every recipe. |
+| `list_tags` | Lists or searches tags. |
+| `list_unused_tags` | Lists tags that no recipe uses. |
+| `create_tag` | Creates a tag. |
+| `rename_tag` | Renames a tag. |
+| `delete_tag` | Permanently deletes a tag and removes it from every recipe. |
+| `list_recipe_tools` | Lists or searches recipe tools. |
+| `list_unused_recipe_tools` | Lists recipe tools that no recipe uses. |
+| `create_recipe_tool` | Creates a recipe tool. |
+| `rename_recipe_tool` | Renames a recipe tool. |
+| `delete_recipe_tool` | Permanently deletes a recipe tool and removes it from every recipe. |
+
+## shopping
+
+| Tool | Description |
+|---|---|
+| `list_shopping_lists` | Lists the household's shopping lists. Use get_shopping_list for the items. |
+| `get_shopping_list` | Gets a shopping list with all its items. |
+| `create_shopping_list` | Creates an empty shopping list. |
+| `rename_shopping_list` | Renames a shopping list. |
+| `delete_shopping_list` | Permanently deletes a shopping list and its items. |
+| `add_shopping_items` | Adds one or more items to a shopping list. |
+| `update_shopping_item` | Changes the given fields of a shopping item, including ticking it off. |
+| `delete_shopping_item` | Removes an item from its shopping list. |
+| `add_recipe_to_shopping_list` | Adds a recipe's ingredients to a shopping list, scaled by a multiplier. |
+
+## mealplans
+
+| Tool | Description |
+|---|---|
+| `get_mealplans` | Lists meal plan entries for the household, optionally within a date range. |
+| `get_todays_meals` | Gets today's meal plan entries. |
+| `create_mealplan_entry` | Adds a meal to the plan: either a recipe, or a title and note for something without one. |
+| `create_random_mealplan_entry` | Lets Mealie pick a recipe for a date, following the household's meal plan rules. |
+| `update_mealplan_entry` | Changes the given fields of a meal plan entry. |
+| `delete_mealplan_entry` | Removes an entry from the meal plan. |

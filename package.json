@@ -1,0 +1,81 @@
+{
+  "name": "@daften/mealie-mcp",
+  "version": "0.1.0-alpha.0",
+  "description": "MCP server for Mealie recipe manager",
+  "type": "module",
+  "bin": {
+    "mealie-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
+    "prepare": "simple-git-hooks",
+    "dev": "dotenv -e .env -- tsx src/index.ts",
+    "format": "biome format --write src/",
+    "lint": "biome check src/",
+    "check": "biome ci src/ && tsc --noEmit && tsc -p tsconfig.test.json && vitest run",
+    "test": "vitest run",
+    "typecheck:tests": "tsc -p tsconfig.test.json",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run check"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/daften/mealie-mcp.git"
+  },
+  "keywords": [
+    "mealie",
+    "mcp",
+    "recipes",
+    "meal-planning",
+    "model-context-protocol",
+    "claude"
+  ],
+  "homepage": "https://github.com/daften/mealie-mcp",
+  "author": "Dieter Blomme <dieterblomme@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/daften/mealie-mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3",
+    "express": "^5.2.1"
+  },
+  "overrides": {
+    "@hono/node-server": "^2.0.5",
+    "esbuild": "^0.28.1",
+    "hono": "^4.13.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "dotenv-cli": "^11.0.0",
+    "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.22.3",
+    "typescript": "^7.0.2",
+    "vitepress": "2.0.0-alpha.20",
+    "vitest": "^5.0.0",
+    "@types/express": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "license": "MIT"
+}
