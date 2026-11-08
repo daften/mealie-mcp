@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Releases of a stable version now install npm 11.21.0 before moving the `next` dist-tag. With npm's bundled version, the step failed with `E401` even though the trusted publisher allowed dist-tag changes.
+
 ## [0.1.0] - 2026-11-08
 
 First stable release. It is the same code as 0.1.0-alpha.2, now published as `latest`. Requires Mealie v3.29.0 or later.
