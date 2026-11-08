@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { parseRoutes } from '../../scripts/update-mealie-routes.mjs';
+
+test('records each method and normalizes path parameters', () => {
+  const spec = { paths: { '/api/recipes/{slug}': { get: {}, patch: {} }, '/api/foods': { post: {} } } };
+  assert.deepEqual(parseRoutes(spec), ['GET /api/recipes/{}', 'PATCH /api/recipes/{}', 'POST /api/foods'].sort());
+});
+
+test('ignores routes outside the API and keys that are not HTTP methods', () => {
+  const spec = { paths: { '/': { get: {} }, '/api/x': { parameters: [], get: {} } } };
+  assert.deepEqual(parseRoutes(spec), ['GET /api/x']);
+});
+
+test('deduplicates and sorts', () => {
+  const spec = { paths: { '/api/b/{id}': { get: {} }, '/api/b/{other}': { get: {} }, '/api/a': { get: {} } } };
+  assert.deepEqual(parseRoutes(spec), ['GET /api/a', 'GET /api/b/{}']);
+});
+
+test('tolerates a document with no paths', () => {
+  assert.deepEqual(parseRoutes({}), []);
+});

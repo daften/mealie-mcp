@@ -1,7 +1,8 @@
 // Contract test: every HTTP request any tool makes must be a route Mealie actually serves. Unit tests
 // mock the client, so they can't notice a path that doesn't exist upstream.
 //
-// Refresh the snapshot with `node scripts/update-mealie-routes.mjs <mealie-url>`.
+// Snapshots cover the oldest supported release and the newest tested. Refresh or add one by running
+// that release and calling `node scripts/update-mealie-routes.mjs <mealie-url>`.
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
@@ -9,13 +10,24 @@ import { MealieClient } from '../client.js';
 import { registerAllTools } from '../tools/index.js';
 import { createMockServer } from './_helpers.js';
 
-const { routes } = JSON.parse(readFileSync(new URL('./fixtures/mealie-routes.json', import.meta.url), 'utf8')) as {
-  routes: string[];
-};
-const table = routes.map((route) => {
-  const [method, path] = route.split(' ');
-  return { method, pattern: new RegExp(`^${path.replace(/\{\}/g, '[^/]+')}$`) };
-});
+const SNAPSHOTS = ['v3.29.0', 'v3.30.0'] as const;
+
+const routeTables = Object.fromEntries(
+  SNAPSHOTS.map((tag) => {
+    const { routes } = JSON.parse(
+      readFileSync(new URL(`./fixtures/mealie-routes-${tag}.json`, import.meta.url), 'utf8'),
+    ) as { routes: string[] };
+    return [
+      tag,
+      routes.map((route) => {
+        const [method, path] = route.split(' ');
+        // Only the sampled values fill a parameter. `[^/]+` would also accept a literal segment like
+        // `/tools/empty` on a release where that word would just be taken for an id.
+        return { method, pattern: new RegExp(`^${path.replace(/\{\}/g, '(x7|7)')}$`) };
+      }),
+    ];
+  }),
+);
 
 /** A plausible value for any schema the tools use, filling optional fields too for maximum coverage. */
 function sample(schema: z.ZodType): unknown {
@@ -67,12 +79,14 @@ describe('Mealie route contract', () => {
     const result = (await mock.handlers.get(name)?.(args)) as { isError?: boolean; content: Array<{ text: string }> };
     expect(result.isError, result.content[0].text).toBeFalsy();
     expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      const [method, path] = call.split(' ');
-      expect(
-        table.some((route) => route.method === method && route.pattern.test(path)),
-        `${call} is not a Mealie route`,
-      ).toBe(true);
+    for (const tag of SNAPSHOTS) {
+      for (const call of calls) {
+        const [method, path] = call.split(' ');
+        expect(
+          routeTables[tag].some((route) => route.method === method && route.pattern.test(path)),
+          `${call} is not a route in Mealie ${tag}`,
+        ).toBe(true);
+      }
     }
   });
 });
