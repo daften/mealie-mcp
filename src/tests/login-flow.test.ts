@@ -194,6 +194,15 @@ describe('discovery and registration', () => {
     >;
     expect(as.code_challenge_methods_supported).toEqual(['S256']);
   });
+  it('sends security headers on the OAuth routes', async () => {
+    const res = await fetch(`${harness.base}/.well-known/oauth-authorization-server`);
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(res.headers.get('strict-transport-security')).toContain('max-age=');
+    expect(res.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+    // A COOP header on the login flow would cut a popup-based client off from its opener.
+    expect(res.headers.get('cross-origin-opener-policy')).toBeNull();
+    expect(res.headers.get('access-control-allow-origin')).toBe('*');
+  });
   it('refuses a disallowed redirect URI', async () => {
     const res = await register('https://evil.example/cb');
     expect(res.status).toBe(400);
@@ -217,6 +226,8 @@ describe('login page', () => {
     expect(csp).toContain("form-action 'self' http://127.0.0.1:9999");
     expect(page.headers.get('cache-control')).toBe('no-store');
     expect(page.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(page.headers.get('x-frame-options')).toBe('DENY');
+    expect(page.headers.get('cross-origin-opener-policy')).toBeNull();
   });
   it('sends the credentials to Mealie as a form', async () => {
     await login();

@@ -48,6 +48,7 @@ jobs:
           ref: ${{ github.event_name == 'push' && github.ref || 'develop' }}
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - name: Resolve channel and version
         id: resolve
@@ -124,6 +125,7 @@ jobs:
           # Full history for the pin below, and tags for the changelog guard, which compares each
           # released section against the tag that published it.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Pin to the commit setup resolved
         env:
@@ -191,6 +193,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'push' && github.ref || 'develop' }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Pin to the commit setup resolved
         env:
@@ -260,6 +263,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'push' && github.ref || 'develop' }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Pin to the commit setup resolved
         env:
@@ -317,6 +321,8 @@ jobs:
         with:
           ref: ${{ github.event_name == 'push' && github.ref || 'develop' }}
           fetch-depth: 0
+          # Pushes the rolling nightly tag.
+          persist-credentials: true
 
       - name: Pin to the commit setup resolved
         env:
