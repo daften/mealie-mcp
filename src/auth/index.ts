@@ -1,6 +1,7 @@
 import type * as http from 'node:http';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import express from 'express';
+import helmet from 'helmet';
 import type { LoginAuth } from '../http.js';
 import type { LoginContext, LoginMethod } from './login-method.js';
 import { MealieSessionApi } from './mealie-session.js';
@@ -38,6 +39,10 @@ export async function createLoginAuth(
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxyHops);
+  // Baseline headers for every OAuth route. The login page sets its own stricter CSP and framing
+  // headers, which replace these. No Cross-Origin-Opener-Policy: clients that run the login in a
+  // popup would lose their link to it.
+  app.use(helmet({ crossOriginOpenerPolicy: false }));
 
   // express-rate-limit logs a validation error when it sees X-Forwarded-For and trust proxy is off.
   // The per-route limits still apply; the check would only add noise behind a reverse proxy.
