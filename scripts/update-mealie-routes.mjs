@@ -25,6 +25,15 @@ export function parseRoutes(spec) {
   return [...routes].sort();
 }
 
+// The version comes from the server's OpenAPI document and is spliced into the output file name, so
+// it is matched in full: a trailing '/../' would otherwise write outside the fixtures directory.
+export function fixtureTag(version) {
+  if (typeof version !== 'string' || !/^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error(`Unrecognized Mealie version: ${version}`);
+  }
+  return version.startsWith('v') ? version : `v${version}`;
+}
+
 async function load(source) {
   if (!/^https?:/.test(source)) return JSON.parse(readFileSync(source, 'utf8'));
   const url = `${source.replace(/\/$/, '')}/openapi.json`;
@@ -40,11 +49,9 @@ async function main() {
     process.exit(1);
   }
   const spec = await load(source);
-  const version = spec.info?.version;
-  if (!/^v?\d+\.\d+\.\d+/.test(version ?? '')) throw new Error(`Unrecognized Mealie version: ${version}`);
+  const tag = fixtureTag(spec.info?.version);
   const routes = parseRoutes(spec);
   if (routes.length < 100) throw new Error(`Only ${routes.length} routes found in ${source}; refusing to write.`);
-  const tag = version.startsWith('v') ? version : `v${version}`;
   const out = resolve(dirname(fileURLToPath(import.meta.url)), `../src/tests/fixtures/mealie-routes-${tag}.json`);
   writeFileSync(out, `${JSON.stringify({ tag, routes }, null, 2)}\n`);
   console.log(`Wrote ${routes.length} routes to ${out}`);
