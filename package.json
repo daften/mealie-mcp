@@ -1,6 +1,6 @@
 {
   "name": "@daften/mealie-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1-beta.1",
   "description": "MCP server for Mealie recipe manager",
   "type": "module",
   "bin": {
@@ -55,8 +55,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^4.4.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "zod": "^4.4.3"
   },
   "overrides": {
     "@hono/node-server": "^2.0.5",
@@ -65,6 +66,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",
+    "@types/express": "^5.0.0",
     "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^5.0.0",
     "dotenv-cli": "^11.0.0",
@@ -72,8 +74,7 @@
     "tsx": "^4.22.3",
     "typescript": "^7.0.2",
     "vitepress": "2.0.0-alpha.21",
-    "vitest": "^5.0.0",
-    "@types/express": "^5.0.0"
+    "vitest": "^5.0.0"
   },
   "engines": {
     "node": ">=22.13.0"

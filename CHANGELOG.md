@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1-beta.1] - 2026-11-12
+
+### Security
+
+- In login mode, the OAuth and login routes now send the standard security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options` and others) through `helmet`. The login page keeps its own stricter policy, and there is no `Cross-Origin-Opener-Policy`, so clients that log in through a popup keep working.
+- `scripts/update-mealie-routes.mjs` checks the whole version string a Mealie server reports before using it in the output file name, so a server can no longer make it write outside `src/tests/fixtures/`.
+- Workflows no longer leave the checkout's Git credentials on the runner, except in the two jobs that push.
+
 ## [1.0.0] - 2026-11-11
 
 Same code as 0.1.1, which has been running in production since its release. From this version, the tool names, parameters and configuration follow semantic versioning: a breaking change needs a major version. Requires Mealie v3.29.0 or later.
@@ -56,7 +64,8 @@ First prerelease, published to the `next` channel. Requires Mealie v3.29.0 or la
 - HTTP auth modes: per-caller API key (default), server-wide API key, and an opt-in login form.
 - Encrypted SQLite token store so logins survive restarts and image updates.
 
-[Unreleased]: https://github.com/daften/mealie-mcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/daften/mealie-mcp/compare/v1.0.1-beta.1...HEAD
+[1.0.1-beta.1]: https://github.com/daften/mealie-mcp/compare/v1.0.0...v1.0.1-beta.1
 [1.0.0]: https://github.com/daften/mealie-mcp/compare/v0.1.1...v1.0.0
 [0.1.1]: https://github.com/daften/mealie-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daften/mealie-mcp/compare/v0.1.0-alpha.2...v0.1.0
