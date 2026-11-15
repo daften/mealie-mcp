@@ -35,6 +35,8 @@ interface AuthorizationCode {
   createdAt: number;
 }
 
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
 function toOAuthTokens(pair: TokenPair): OAuthTokens {
   return {
     access_token: pair.accessToken,
@@ -55,7 +57,10 @@ export class MealieOAuthProvider implements OAuthServerProvider {
     private readonly mealie: MealieSessionApi,
     private readonly loginMethods: LoginMethod[],
     private readonly baseUrl: string,
+    /** Stop waiting for Mealie's token check after this long during a refresh; 0 always waits. */
+    private readonly refreshCheckTimeoutMs = 0,
     private readonly now: () => number = () => Date.now(),
+    private readonly log: (line: string) => void = (line) => process.stderr.write(`${line}\n`),
   ) {
     this.clientsStore = {
       getClient: (clientId) => store.getClient(clientId),
@@ -176,29 +181,72 @@ export class MealieOAuthProvider implements OAuthServerProvider {
     if (resource && !this.isOwnResource(resource)) throw new InvalidTargetError('This token is not for this server.');
     const record = refreshToken.startsWith(REFRESH_TOKEN_PREFIX) ? this.store.findToken(refreshToken) : undefined;
     if (record?.kind !== 'refresh' || record.expiresAt <= this.now()) {
+      this.log(`refresh: rejected an ${record ? 'expired' : 'unknown'} refresh token`);
       throw new InvalidGrantError('Invalid refresh token');
     }
     const grant = this.store.getGrant(record.grantId);
     if (!grant || grant.clientId !== client.client_id) throw new InvalidGrantError('Invalid refresh token');
 
-    if (record.supersededAt !== null && this.now() - record.supersededAt > REFRESH_REUSE_GRACE_MS) {
+    const started = this.now();
+    const tag = `grant=${grant.id.slice(0, 8)}`;
+    const sinceRotation = record.supersededAt === null ? null : started - record.supersededAt;
+    if (sinceRotation !== null && sinceRotation > REFRESH_REUSE_GRACE_MS) {
+      this.log(`refresh: ${tag} reused ${seconds(sinceRotation)} after rotation; ending the login`);
       await this.endGrant(grant.id, grant.mealieToken, grant.mealieTokenId);
       throw new InvalidGrantError('Refresh token was already used');
     }
 
-    let valid: boolean;
+    const check = this.mealie.isTokenValid(grant.mealieToken);
+    let valid: boolean | 'pending';
     try {
-      valid = await this.mealie.isTokenValid(grant.mealieToken);
+      valid = await this.withCheckTimeout(check);
     } catch (err) {
       // A Mealie outage must not cost anyone their login: invalid_grant would force a new one.
-      if (err instanceof MealieUnavailableError) throw new ServerError('Mealie is unavailable, try again later');
+      if (err instanceof MealieUnavailableError) {
+        this.log(`refresh: ${tag} Mealie unavailable after ${seconds(this.now() - started)}; login kept`);
+        throw new ServerError('Mealie is unavailable, try again later');
+      }
       throw err;
     }
-    if (!valid) {
+    const checked =
+      valid === 'pending'
+        ? `Mealie check still running after ${seconds(this.now() - started)}, answered without it`
+        : `Mealie check ${seconds(this.now() - started)}`;
+    if (valid === 'pending') {
+      // Opt-in: a slow host must not hold the client's token response open. The verdict still counts when it
+      // arrives; until then the new tokens work, as they would if the token were revoked just after a check.
+      check.then(
+        (ok) => {
+          if (ok) return;
+          this.log(`refresh: ${tag} Mealie token was revoked (late answer); ending the login`);
+          this.store.deleteGrant(grant.id);
+        },
+        () => {}, // unreachable Mealie keeps the login, as above
+      );
+    } else if (!valid) {
+      this.log(`refresh: ${tag} Mealie token was revoked; ending the login`);
       this.store.deleteGrant(grant.id);
       throw new InvalidGrantError('The Mealie token behind this login was revoked');
     }
-    return toOAuthTokens(this.store.issueTokens(grant.id, refreshToken));
+
+    const pair = this.store.issueTokens(grant.id, refreshToken);
+    const kind = sinceRotation === null ? 'rotated' : `retried ${seconds(sinceRotation)} after rotation; reissued`;
+    this.log(`refresh: ${tag} ${kind} (${checked})`);
+    return toOAuthTokens(pair);
+  }
+
+  /** The check's answer, or 'pending' once the configured timeout passes first. Without a timeout, waits. */
+  private async withCheckTimeout(check: Promise<boolean>): Promise<boolean | 'pending'> {
+    if (this.refreshCheckTimeoutMs <= 0) return check;
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<'pending'>((resolve) => {
+      timer = setTimeout(() => resolve('pending'), this.refreshCheckTimeoutMs);
+    });
+    try {
+      return await Promise.race([check, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {

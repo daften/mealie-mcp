@@ -9,6 +9,7 @@
 | `MCP_BASE_URL` | login | Public origin, with no path. Required off loopback, and must be `https://` there |
 | `MCP_DATA_DIR` | login | Where the database lives. `/data` in the Docker image, otherwise `./data` |
 | `MCP_TRUST_PROXY_HOPS` | login | Number of reverse proxies in front, so rate limits see client IPs. Default `0` |
+| `MCP_REFRESH_CHECK_TIMEOUT_SECONDS` | login | Seconds a token refresh waits for Mealie's check before answering anyway; a late "revoked" still ends the login. Default `0`: always wait. For slow hosts. See [the login guide](../guide/login-form.md#when-a-refresh-response-gets-lost) |
 | `MCP_ALLOWED_REDIRECT_PREFIXES` | login | Extra allowed OAuth redirect URI prefixes, comma-separated |
 | `MCP_PRESET` | all | `minimal`, `default` or `full`. Fallback for `--preset` |
 | `MCP_GROUPS` | all | Comma-separated tool groups. Fallback for `--groups` |
