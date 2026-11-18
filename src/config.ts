@@ -42,6 +42,14 @@ export function resolveHttpMode(env: NodeJS.ProcessEnv, host: string, port: numb
     throw new ConfigError(`MCP_TRUST_PROXY_HOPS must be a whole number, got "${env.MCP_TRUST_PROXY_HOPS}"`);
   }
 
+  // Mealie calls give up after 30 s anyway, so only a shorter timeout changes anything.
+  const checkTimeoutRaw = env.MCP_REFRESH_CHECK_TIMEOUT_SECONDS?.trim() || '0';
+  if (!/^\d+$/.test(checkTimeoutRaw) || Number(checkTimeoutRaw) >= 30) {
+    throw new ConfigError(
+      `MCP_REFRESH_CHECK_TIMEOUT_SECONDS must be a whole number of seconds below 30 (0 turns it off), got "${env.MCP_REFRESH_CHECK_TIMEOUT_SECONDS}"`,
+    );
+  }
+
   return {
     kind: 'login',
     config: {
@@ -49,6 +57,7 @@ export function resolveHttpMode(env: NodeJS.ProcessEnv, host: string, port: numb
       tokenKey,
       dataDir: env.MCP_DATA_DIR?.trim() || './data',
       trustProxyHops: Number(trustProxyRaw),
+      refreshCheckTimeoutMs: Number(checkTimeoutRaw) * 1000,
     },
   };
 }

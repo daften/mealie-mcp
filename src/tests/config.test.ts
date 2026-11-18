@@ -52,6 +52,16 @@ describe('resolveHttpMode', () => {
     expect(() => resolveHttpMode({ MEALIE_MCP_PASSWORD_LOGIN: 'on' }, '127.0.0.1', 3000)).toThrow(/must be/);
     expect(() => resolveHttpMode({ ...login, MCP_TRUST_PROXY_HOPS: 'x' }, '0.0.0.0', 3000)).toThrow(/HOPS/);
   });
+  it('reads the refresh check timeout in seconds, off by default', () => {
+    const ms = (value?: string) => {
+      const mode = resolveHttpMode({ ...login, MCP_REFRESH_CHECK_TIMEOUT_SECONDS: value }, '0.0.0.0', 3000);
+      return mode.kind === 'login' ? mode.config.refreshCheckTimeoutMs : undefined;
+    };
+    expect(ms()).toBe(0);
+    expect(ms('5')).toBe(5000);
+    expect(() => ms('30')).toThrow(/below 30/);
+    expect(() => ms('2.5')).toThrow(/MCP_REFRESH_CHECK_TIMEOUT_SECONDS/);
+  });
 });
 
 describe('startupWarnings', () => {

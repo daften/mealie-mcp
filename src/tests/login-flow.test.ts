@@ -17,6 +17,8 @@ interface Harness {
     logins: Array<Record<string, string>>;
     deleted: string[];
     tokenValid: boolean | 'down';
+    /** How long /users/self takes to answer, to stand in for an overloaded host. */
+    selfDelayMs: number;
     loginStatus: number;
   };
   seenTokens: Array<string | undefined>;
@@ -32,8 +34,8 @@ async function listen(handler: http.RequestListener): Promise<http.Server> {
 }
 const portOf = (s: http.Server) => (s.address() as AddressInfo).port;
 
-async function startHarness(): Promise<Harness> {
-  const mealie: Harness['mealie'] = { logins: [], deleted: [], tokenValid: true, loginStatus: 200 };
+async function startHarness(options: { refreshCheckTimeoutMs?: number } = {}): Promise<Harness> {
+  const mealie: Harness['mealie'] = { logins: [], deleted: [], tokenValid: true, selfDelayMs: 0, loginStatus: 200 };
   const stub = await listen((req, res) => {
     let raw = '';
     req.on('data', (c) => {
@@ -54,8 +56,12 @@ async function startHarness(): Promise<Harness> {
         return json(201, { id: 11, name: JSON.parse(raw).name, token: 'long-lived-token' });
       }
       if (req.url === '/api/users/self') {
-        if (mealie.tokenValid === 'down') return json(503, {});
-        return mealie.tokenValid ? json(200, { id: 'u' }) : json(401, { detail: 'dead' });
+        const answer = () => {
+          if (mealie.tokenValid === 'down') return json(503, {});
+          return mealie.tokenValid ? json(200, { id: 'u' }) : json(401, { detail: 'dead' });
+        };
+        if (mealie.selfDelayMs > 0) return void setTimeout(answer, mealie.selfDelayMs);
+        return answer();
       }
       if (req.url?.startsWith('/api/users/api-tokens/') && req.method === 'DELETE') {
         mealie.deleted.push(req.url);
@@ -70,7 +76,13 @@ async function startHarness(): Promise<Harness> {
   const server = await listen((req, res) => void handler(req, res));
   const base = `http://127.0.0.1:${portOf(server)}`;
   const auth = await createLoginAuth(
-    { baseUrl: base, tokenKey: 'k'.repeat(40), dataDir: ':memory:', trustProxyHops: 0 },
+    {
+      baseUrl: base,
+      tokenKey: 'k'.repeat(40),
+      dataDir: ':memory:',
+      trustProxyHops: 0,
+      refreshCheckTimeoutMs: options.refreshCheckTimeoutMs ?? 0,
+    },
     `http://127.0.0.1:${portOf(stub)}`,
     [passwordLogin()],
   );
@@ -96,6 +108,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   vi.useRealTimers();
+  vi.restoreAllMocks(); // a failing assertion must not leave Date.now mocked for the next test
   await harness.close();
 });
 
@@ -323,6 +336,8 @@ describe('refresh', () => {
     expect(next.refresh_token).not.toBe(tokens.refresh_token);
     expect((await refresh(clientId, tokens.refresh_token)).status).toBe(200); // lost-response retry
   });
+  const bearer = (token: string) => fetch(harness.base, { headers: { Authorization: `Bearer ${token}` } });
+
   it('revokes the whole grant on reuse after the grace period', async () => {
     const { clientId, tokens } = await loginToTokens();
     const next = (await (await refresh(clientId, tokens.refresh_token)).json()) as {
@@ -348,6 +363,46 @@ describe('refresh', () => {
     expect(during.status).toBe(500);
     harness.mealie.tokenValid = true;
     expect((await refresh(clientId, tokens.refresh_token)).status).toBe(200);
+  });
+  it('waits for a slow Mealie check by default', async () => {
+    const { clientId, tokens } = await loginToTokens();
+    harness.mealie.selfDelayMs = 300;
+    const started = Date.now();
+    expect((await refresh(clientId, tokens.refresh_token)).status).toBe(200);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(250);
+  });
+  it('with a check timeout, answers before a slow Mealie does', async () => {
+    await harness.close();
+    harness = await startHarness({ refreshCheckTimeoutMs: 50 });
+    const { clientId, tokens } = await loginToTokens();
+    harness.mealie.selfDelayMs = 300;
+    const started = Date.now();
+    const res = await refresh(clientId, tokens.refresh_token);
+    expect(res.status).toBe(200);
+    expect(Date.now() - started).toBeLessThan(250);
+    const next = (await res.json()) as { access_token: string };
+    await new Promise((resolve) => setTimeout(resolve, 400)); // Mealie's late answer: still valid
+    expect((await bearer(next.access_token)).status).not.toBe(401);
+  });
+  it('with a check timeout, ends the login when Mealie later says the token was revoked', async () => {
+    await harness.close();
+    harness = await startHarness({ refreshCheckTimeoutMs: 50 });
+    const { clientId, tokens } = await loginToTokens();
+    harness.mealie.selfDelayMs = 300;
+    harness.mealie.tokenValid = false;
+    const res = await refresh(clientId, tokens.refresh_token);
+    expect(res.status).toBe(200);
+    const next = (await res.json()) as { access_token: string; refresh_token: string };
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect((await bearer(next.access_token)).status).toBe(401);
+    expect((await refresh(clientId, next.refresh_token)).status).toBe(400);
+  });
+  it('with a check timeout, still refuses at once when a quick Mealie says revoked', async () => {
+    await harness.close();
+    harness = await startHarness({ refreshCheckTimeoutMs: 200 });
+    const { clientId, tokens } = await loginToTokens();
+    harness.mealie.tokenValid = false;
+    expect(await (await refresh(clientId, tokens.refresh_token)).json()).toMatchObject({ error: 'invalid_grant' });
   });
   it('refuses a token from another client, and an access token as refresh', async () => {
     const { clientId, tokens } = await loginToTokens();

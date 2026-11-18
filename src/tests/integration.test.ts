@@ -228,7 +228,13 @@ describe.skipIf(SKIP)('Integration: live Mealie', () => {
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const auth = await createLoginAuth(
-      { baseUrl: base, tokenKey: randomBytes(32).toString('hex'), dataDir: ':memory:', trustProxyHops: 0 },
+      {
+        baseUrl: base,
+        tokenKey: randomBytes(32).toString('hex'),
+        dataDir: ':memory:',
+        trustProxyHops: 0,
+        refreshCheckTimeoutMs: 0,
+      },
       url,
       [passwordLogin()],
     );
