@@ -15,6 +15,8 @@ export interface LoginConfig {
   tokenKey: string;
   dataDir: string;
   trustProxyHops: number;
+  /** A refresh stops waiting for Mealie's token check after this long, and checks the answer later. 0: wait. */
+  refreshCheckTimeoutMs: number;
 }
 
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
@@ -34,7 +36,13 @@ export async function createLoginAuth(
   methods: LoginMethod[],
 ): Promise<LoginAuth & { close(): Promise<void>; provider: MealieOAuthProvider }> {
   const store = await TokenStore.open(config.dataDir, config.tokenKey);
-  const provider = new MealieOAuthProvider(store, new MealieSessionApi(mealieUrl), methods, config.baseUrl);
+  const provider = new MealieOAuthProvider(
+    store,
+    new MealieSessionApi(mealieUrl),
+    methods,
+    config.baseUrl,
+    config.refreshCheckTimeoutMs,
+  );
 
   const app = express();
   app.disable('x-powered-by');

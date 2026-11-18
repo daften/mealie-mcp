@@ -48,6 +48,13 @@ In this mode the server doesn't accept Mealie API keys, and `MEALIE_API_TOKEN` m
 - **Keep `MCP_TOKEN_KEY` the same.** With a different key the server refuses to start, rather than logging everyone out. To reset on purpose, delete `mealie-mcp.db*` from the volume.
 - **Bind mounts** must be writable by uid 1000.
 - **Run one replica.** Logins in progress and the SQLite database aren't shared between containers.
+- **Each refresh is logged** to the container output (`docker logs`), with how long the check against Mealie took and why a login ended. Tokens themselves are never logged.
+
+### When a refresh response gets lost
+
+Each refresh replaces the refresh token. If the client never receives the response (a dropped connection, a laptop that slept mid-request, a slow host), it retries with the old one. That works for one more minute. After that, the server can't tell the client apart from someone holding a copy of the old token, so presenting it ends the login and the user logs in again. The server log shows this as `reused … after rotation; ending the login`.
+
+Late retries mostly happen when the token exchange itself is slow. Before answering, each refresh asks Mealie whether the login's API token still works, and on an overloaded host that can take up to 30 seconds. The server log shows how long it took (`Mealie check …s`). If that number is often high, set `MCP_REFRESH_CHECK_TIMEOUT_SECONDS`, for example to `5`. The refresh then answers after that many seconds without waiting for Mealie. If Mealie's answer arrives later and says the API token was deleted, the login still ends. The only cost is that a deleted API token can keep working for those few seconds, plus however long Mealie takes to answer. Off by default.
 
 ## Ending a login
 

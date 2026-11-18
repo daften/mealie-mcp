@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- In login mode, each token refresh is logged to the server output, with how long the Mealie check took and, when a login ends, why.
+- `MCP_REFRESH_CHECK_TIMEOUT_SECONDS` (login mode, off by default) lets a token refresh answer after that many seconds instead of waiting up to 30 for Mealie to confirm the login's API token still works. On a slow host this keeps the client from giving up on the refresh and being logged out. If Mealie's answer arrives later and says the token was deleted, the login still ends.
 ## [1.0.1-beta.1] - 2026-11-12
 
 ### Security
