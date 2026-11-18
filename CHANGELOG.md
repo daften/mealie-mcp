@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0-beta.1] - 2026-11-18
+
 ### Added
 
 - In login mode, each token refresh is logged to the server output, with how long the Mealie check took and, when a login ends, why.
 - `MCP_REFRESH_CHECK_TIMEOUT_SECONDS` (login mode, off by default) lets a token refresh answer after that many seconds instead of waiting up to 30 for Mealie to confirm the login's API token still works. On a slow host this keeps the client from giving up on the refresh and being logged out. If Mealie's answer arrives later and says the token was deleted, the login still ends.
+
 ## [1.0.1-beta.1] - 2026-11-12
 
 ### Security
@@ -68,7 +71,8 @@ First prerelease, published to the `next` channel. Requires Mealie v3.29.0 or la
 - HTTP auth modes: per-caller API key (default), server-wide API key, and an opt-in login form.
 - Encrypted SQLite token store so logins survive restarts and image updates.
 
-[Unreleased]: https://github.com/daften/mealie-mcp/compare/v1.0.1-beta.1...HEAD
+[Unreleased]: https://github.com/daften/mealie-mcp/compare/v1.1.0-beta.1...HEAD
+[1.1.0-beta.1]: https://github.com/daften/mealie-mcp/compare/v1.0.1-beta.1...v1.1.0-beta.1
 [1.0.1-beta.1]: https://github.com/daften/mealie-mcp/compare/v1.0.0...v1.0.1-beta.1
 [1.0.0]: https://github.com/daften/mealie-mcp/compare/v0.1.1...v1.0.0
 [0.1.1]: https://github.com/daften/mealie-mcp/compare/v0.1.0...v0.1.1
